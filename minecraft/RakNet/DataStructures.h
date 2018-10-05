@@ -5,6 +5,8 @@
 #define DSDebug char const *sourceFile, uint32_t sourceLine
 
 namespace DataStructures {
+using BitSize_t = uint32_t;
+
 class ByteQueue {
 public:
   ByteQueue();
@@ -139,6 +141,41 @@ protected:
   DataStructures::List<HeapNode> heap;
   bool optimizeNextSeriesPush;
 };
+template <class K, class V> int defaultOrderedListComparison(const K &a, const V &b) {
+  if (a < b) return -1;
+  if (a == b) return 0;
+  return 1;
+}
+template <class K, class V, int (*default_comparison_function)(const K &, const V &) = defaultOrderedListComparison<K, V>> class OrderedList {
+public:
+  OrderedList();
+  ~OrderedList();
+  OrderedList(const OrderedList &original_copy);
+  OrderedList &operator=(const OrderedList &original_copy);
+
+  bool HasData(const K &key, int (*cf)(const K &, const V &) = default_comparison_function) const;
+  unsigned GetIndexFromKey(const K &key, bool *objectExists, int (*cf)(const K &, const V &) = default_comparison_function) const;
+  V GetElementFromKey(const K &key, int (*cf)(const K &, const V &) = default_comparison_function) const;
+  bool GetElementFromKey(const K &key, V &element, int (*cf)(const K &, const V &) = default_comparison_function) const;
+  unsigned Insert(const K &key, const V &data, bool assertOnDuplicate, DSDebug, int (*cf)(const K &, const V &) = default_comparison_function);
+  unsigned Remove(const K &key, int (*cf)(const K &, const V &) = default_comparison_function);
+  unsigned RemoveIfExists(const K &key, int (*cf)(const K &, const V &) = default_comparison_function);
+  V &operator[](const unsigned int position) const;
+  void RemoveAtIndex(const unsigned index);
+  void InsertAtIndex(const V &data, const unsigned index, DSDebug);
+  void InsertAtEnd(const V &data, DSDebug);
+  void RemoveFromEnd(const unsigned num = 1);
+  void Clear(bool doNotDeallocate, DSDebug);
+  unsigned Size(void) const;
+
+protected:
+  DataStructures::List<V> orderedList;
+};
+template <class key_type> int defaultMapKeyComparison(const key_type &a, const key_type &b) {
+  if (a < b) return -1;
+  if (a == b) return 0;
+  return 1;
+}
 template <class K, class V, int (*key_comparison_func)(const K &, const K &) = defaultMapKeyComparison<K>> class Map {
 public:
   static void IMPLEMENT_DEFAULT_COMPARISON(void) { DataStructures::defaultMapKeyComparison<K>(K(), K()); }
@@ -223,36 +260,6 @@ protected:
   Page *availablePages, *unavailablePages;
   int availablePagesSize, unavailablePagesSize;
   int memoryPoolPageSize;
-};
-template <class K, class V> int defaultOrderedListComparison(const K &a, const V &b) {
-  if (a < b) return -1;
-  if (a == b) return 0;
-  return 1;
-}
-template <class K, class V, int (*default_comparison_function)(const K &, const V &) = defaultOrderedListComparison<K, V>> class OrderedList {
-public:
-  OrderedList();
-  ~OrderedList();
-  OrderedList(const OrderedList &original_copy);
-  OrderedList &operator=(const OrderedList &original_copy);
-
-  bool HasData(const K &key, int (*cf)(const K &, const V &) = default_comparison_function) const;
-  unsigned GetIndexFromKey(const K &key, bool *objectExists, int (*cf)(const K &, const V &) = default_comparison_function) const;
-  V GetElementFromKey(const K &key, int (*cf)(const K &, const V &) = default_comparison_function) const;
-  bool GetElementFromKey(const K &key, V &element, int (*cf)(const K &, const V &) = default_comparison_function) const;
-  unsigned Insert(const K &key, const V &data, bool assertOnDuplicate, DSDebug, int (*cf)(const K &, const V &) = default_comparison_function);
-  unsigned Remove(const K &key, int (*cf)(const K &, const V &) = default_comparison_function);
-  unsigned RemoveIfExists(const K &key, int (*cf)(const K &, const V &) = default_comparison_function);
-  V &operator[](const unsigned int position) const;
-  void RemoveAtIndex(const unsigned index);
-  void InsertAtIndex(const V &data, const unsigned index, DSDebug);
-  void InsertAtEnd(const V &data, DSDebug);
-  void RemoveFromEnd(const unsigned num = 1);
-  void Clear(bool doNotDeallocate, DSDebug);
-  unsigned Size(void) const;
-
-protected:
-  DataStructures::List<V> orderedList;
 };
 template <class T> class Queue {
 public:

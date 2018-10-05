@@ -1,5 +1,7 @@
 #pragma once
 
+#include <dlfcn.h>
+
 template <typename T> static void *void_cast(T f) {
   union {
     T pf;
@@ -9,7 +11,7 @@ template <typename T> static void *void_cast(T f) {
   return p;
 }
 
-void *MinecraftHandle() {
+static void *MinecraftHandle() {
   static void *handle = dlopen(nullptr, RTLD_LAZY);
   return handle;
 }

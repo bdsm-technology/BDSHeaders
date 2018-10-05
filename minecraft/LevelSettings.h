@@ -14,7 +14,7 @@ struct LevelSettings {
   Difficulty difficulty;                            // 8
   bool _forceGameType;                              // 12
   GeneratorType generator;                          // 16
-  bool hasAchievementsDisabled;                     // 20
+  bool achievementsDisabled;                        // 20
   DimensionId dimension;                            // 24
   int time;                                         // 28
   bool edu;                                         // 32

@@ -1,20 +1,20 @@
 #pragma once
 
 namespace SharedConstants {
-int MajorVersion;
-int MinorVersion;
-int PatchVersion;
-int RevisionVersion;
-int IsBeta;
-int NetworkProtocolVersion;
-int AutomationProtocolVersion;
-int CompanionAppProtocolVersion;
-int MaxChatLength;
-int LevelDBCompressorID;
-int CurrentStorageVersion;
-int CurrentLevelChunkFormat;
-int CurrentSubChunkFormat;
-int NetworkDefaultGamePort;
-int NetworkDefaultGamePortv6;
-int NetworkDefaultMaxConnections;
+extern int MajorVersion;
+extern int MinorVersion;
+extern int PatchVersion;
+extern int RevisionVersion;
+extern int IsBeta;
+extern int NetworkProtocolVersion;
+extern int AutomationProtocolVersion;
+extern int CompanionAppProtocolVersion;
+extern int MaxChatLength;
+extern int LevelDBCompressorID;
+extern int CurrentStorageVersion;
+extern int CurrentLevelChunkFormat;
+extern int CurrentSubChunkFormat;
+extern int NetworkDefaultGamePort;
+extern int NetworkDefaultGamePortv6;
+extern int NetworkDefaultMaxConnections;
 };
