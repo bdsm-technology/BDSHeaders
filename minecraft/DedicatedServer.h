@@ -18,8 +18,7 @@ struct DedicatedServer : IMinecraftApp {
   AppPlatform *platform;                                          // 8
   Minecraft *minecraft;                                           // 16
   std::unique_ptr<Automation::AutomationClient> automationClient; // 24
-  std::unique_ptr<TextFilteringProcessor> textProcessor;          // 32
-  bool stopped;
+  bool stopped;                                                   // 32
 
   virtual ~DedicatedServer();
   virtual Minecraft *getPrimaryMinecraft();

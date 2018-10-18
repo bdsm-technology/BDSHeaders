@@ -56,10 +56,11 @@ struct LevelData {
   bool lockedResourcePack;                          // 531
   bool lockedTemplate;                              // 532
   ContentIdentity prid;                             // 536
-  bool bounsChestEnabled;                           // 560
-  bool bonusChestSpawned;                           // 561
-  bool startWithMapEnabled;                         // 562
-  bool centerMapsToOrigin;                          // 563
+  bool useMsaGamertagsOnly;                         // 560
+  bool bounsChestEnabled;                           // 561
+  bool bonusChestSpawned;                           // 562
+  bool startWithMapEnabled;                         // 563
+  bool centerMapsToOrigin;                          // 564
 
   LevelData();
   LevelData(LevelData &&);
@@ -106,6 +107,7 @@ struct LevelData {
   unsigned getWorldStartCount() const;
   bool getXBLBroadcastIntent() const;
   Social::GamePublishSetting getXBLBroadcastMode() const;
+  bool getUseMsaGamertagsOnly() const;
 
   bool hasAchievementsDisabled() const;
   bool hasBounsChestEnabled() const;
@@ -132,6 +134,7 @@ struct LevelData {
   void incrementTick();
   void recordStartup();
   void updateLastTimePlayed();
+  void touchLastLoadedWithVersion();
 
   std::unique_ptr<CompoundTag> createTag() const;
   void getTagData(CompoundTag const &);
@@ -173,6 +176,7 @@ struct LevelData {
   void setXBLBroadcast(bool);
   void setXBLBroadcastIntent(bool);
   void setXBLBroadcastMode(Social::GamePublishSetting);
+  void setUseMsaGamertagsOnly(bool);
 
   ~LevelData();
 };

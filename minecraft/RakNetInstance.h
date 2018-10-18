@@ -254,8 +254,6 @@ struct RakNetInstance : Connector {
   void tick();
 };
 
-char x[offsetof(RakNetInstance, natInfo)];
-
 static_assert(offsetof(RakNetInstance::RakNetNetworkPeer, pkts) == 200);
 static_assert(offsetof(RakNetInstance, connInfo1) == 168);
 static_assert(offsetof(RakNetInstance, localId) == 424);

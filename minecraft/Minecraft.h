@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Documentation.h"
+#include "types.h"
 #include <chrono>
 #include <memory>
 #include <unordered_map>
@@ -21,12 +23,6 @@ struct Timer;
 struct NetworkHandler;
 struct PacketSender;
 struct DedicatedServer;
-namespace Documentation {
-struct Writer {
-  std::string content;
-  Writer();
-};
-} // namespace Documentation
 struct IMinecraftApp;
 struct ContentTierManager;
 struct NetworkIdentifier;
@@ -34,34 +30,56 @@ struct Level;
 struct NetEventCallback;
 struct RakNetServerLocator;
 struct Player;
-namespace mce {
-struct UUID;
-}
 struct Scheduler;
 struct TextFilteringProcessor;
 
-struct Minecraft {
-  GameCallbacks *callbacks;                                 // 0
-  SkinInfoFactory *skinInfoFactory;                         // 8
-  IMinecraftEventing *minecraftEventing;                    // 16
-  std::unique_ptr<ResourcePackManager> resourcePackManager; // 24
-  std::unique_ptr<StructureManager> structureManager;       // 32
-  Whitelist *whitelist;                                     // 40
-  PermissionsMap *permMap;                                  // 48
-  std::unique_ptr<NetworkStatistics> networkStats;          // 56
-  std::unique_ptr<PrivateKeyManager> privateKeyManager;     // 64
-  std::string s0;                                           // 72
-  FilePathManager *filePathManager;                         // 104
-  uint64_t unk112, unk120, unk128;                          // 112, 120, 128
-  std::chrono::seconds clock;                               // 136
-  std::unique_ptr<MinecraftCommands> commands;              // 144
-  std::unique_ptr<GameSession> session;                     // 152
-  Timer *timer0, *timer1;                                   // 160, 168
-  NetworkHandler *network;                                  // 176
-  PacketSender *sender;                                     // 184
-  DedicatedServer *server;                                  // 192
-  unsigned char subId;                                      // 200
-  Documentation::Writer writer;                             // 208
+namespace entt {
+template <typename T> struct Registry;
+}
+
+struct EntityContext;
+
+struct EntityRegistry {
+  entt::Registry<EntityId> *reg;
+  template <typename T0, typename T1, typename T2> struct View {
+    EntityRegistry *reg;
+    View(EntityRegistry &);
+    template <typename F> void each(F f);
+  };
+  bool isValidEntity(EntityContext const &);
+  template <typename T> void removeComponentFromAllEntities();
+  template <typename T0, typename T1, typename T2, typename F> void viewEach(F);
+};
+
+struct IEntityRegistryOwner {
+  virtual ~IEntityRegistryOwner();
+  virtual EntityRegistry &getEntityRegistry() = 0;
+};
+
+struct Minecraft : IEntityRegistryOwner {
+  GameCallbacks *callbacks;                                 // 8
+  SkinInfoFactory *skinInfoFactory;                         // 16
+  IMinecraftEventing *minecraftEventing;                    // 24
+  std::unique_ptr<ResourcePackManager> resourcePackManager; // 32
+  std::unique_ptr<StructureManager> structureManager;       // 40
+  Whitelist *whitelist;                                     // 48
+  PermissionsMap *permMap;                                  // 56
+  std::unique_ptr<NetworkStatistics> networkStats;          // 64
+  std::unique_ptr<PrivateKeyManager> privateKeyManager;     // 72
+  std::string s0;                                           // 80
+  FilePathManager *filePathManager;                         // 112
+  bool unk120;                                              // 120
+  uint64_t unk128, unk136;                                  // 128, 136
+  std::chrono::seconds clock;                               // 144
+  std::unique_ptr<MinecraftCommands> commands;              // 152
+  std::unique_ptr<GameSession> session;                     // 160
+  Timer *timer0, *timer1;                                   // 168, 176
+  NetworkHandler *network;                                  // 184
+  PacketSender *sender;                                     // 192
+  DedicatedServer *server;                                  // 200
+  unsigned char subId;                                      // 208
+  Documentation::Writer writer;                             // 216
+  EntityRegistry entityRegistry;                            // 264
 
   Minecraft(IMinecraftApp &, GameCallbacks &, SkinInfoFactory &, Whitelist &, PermissionsMap const &, FilePathManager *, std::chrono::duration<long, std::ratio<1l, 1l>>, IMinecraftEventing &,
             NetworkHandler &, PacketSender &, unsigned char, Timer &, Timer &, ContentTierManager const &, bool);
@@ -102,18 +120,20 @@ struct Minecraft {
   void setGameModeReal(GameType);
   void setSimTimePause(bool);
   void setSimTimeScale(float);
-  void setupServerCommands(std::string const&, std::string const&);
+  void setupServerCommands(std::string const &, std::string const &);
   void startClientGame(std::unique_ptr<NetEventCallback>);
   void startLeaveGame(bool);
-  void tickRealtime(int,int);
-  void tickSimtime(int,int);
-  bool update(bool);
+  void tickRealtime(int, int);
+  void tickSimtime(int, int);
+  bool update();
   void updateScreens();
-  bool usesNonLocalConnection(NetworkIdentifier const&);
-  ~Minecraft();
+  bool usesNonLocalConnection(NetworkIdentifier const &);
+  virtual ~Minecraft();
+  virtual EntityRegistry &getEntityRegistry();
 };
 
-static_assert(offsetof(Minecraft, filePathManager) == 104);
-static_assert(offsetof(Minecraft, clock) == 136);
-static_assert(offsetof(Minecraft, subId) == 200);
-static_assert(offsetof(Minecraft, writer) == 208);
+static_assert(offsetof(Minecraft, filePathManager) == 112);
+static_assert(offsetof(Minecraft, clock) == 144);
+static_assert(offsetof(Minecraft, subId) == 208);
+static_assert(offsetof(Minecraft, writer) == 216);
+static_assert(offsetof(Minecraft, entityRegistry) == 264);

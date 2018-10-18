@@ -1,6 +1,8 @@
 #pragma once
 
 #include "UUID.h"
+#include "json.h"
+#include <memory>
 #include <string>
 
 struct PlayerStorageIds {
@@ -60,6 +62,7 @@ struct Tick {
 struct BlockPos;
 struct Vec3;
 struct Actor;
+struct Mob;
 
 struct ChunkPos {
   int x, z;
@@ -147,6 +150,14 @@ struct BlockPos {
   float distSqr(float, float, float);
 };
 
+struct Vec2 {
+  float x, z; // 0, 4
+};
+
+struct Vec3 {
+  float x, y, z; // 0, 4, 8
+};
+
 struct ContentIdentity {
   mce::UUID uuid;
   bool valid;
@@ -210,12 +221,153 @@ struct PackInstanceId {
   bool operator==(PackInstanceId const &) const;
 };
 
+struct Random;
+
+struct FloatRange {
+  float low, high;
+  void getValue(Random &);
+  bool parseJson(Json::Value, float, float);
+};
+
 enum struct Difficulty { Peaceful, Easy, Normal, Hard };
 enum struct GameType { Survival, Creative };
 enum struct GeneratorType { Old, Normal, Flat };
-enum struct DimensionId { Overworld, Neither, TheEnd };
 enum struct StorageVersion {};
 
 namespace Social {
 enum struct GamePublishSetting {};
 }
+
+enum struct ActorType {};
+enum struct ParticleType {};
+enum struct ContainerType : int {};
+
+struct ActorDefinitionIdentifier {
+  std::string ns;
+  std::string name;
+  std::string desc;
+
+  ActorDefinitionIdentifier();
+  ActorDefinitionIdentifier(ActorType);
+  ActorDefinitionIdentifier(char const *);
+  ActorDefinitionIdentifier(std::string const &);
+  ActorDefinitionIdentifier(std::string const &, std::string const &, std::string const &);
+  ActorDefinitionIdentifier(ActorDefinitionIdentifier const &);
+  ActorDefinitionIdentifier(ActorDefinitionIdentifier &&);
+
+  static std::string NAMESPACE_SEPARATOR;
+  static std::string EVENT_BEGIN, EVENT_END;
+
+  ActorDefinitionIdentifier &operator=(ActorDefinitionIdentifier const &);
+  bool operator==(ActorDefinitionIdentifier const &) const;
+
+  std::string getFullName() const;
+  std::string getCanonicalName() const;
+
+  ~ActorDefinitionIdentifier();
+};
+
+namespace ClassID {
+template <typename T> std::size_t getID();
+}
+
+enum struct FilterParamType : int {};
+enum struct FilterSubject : short {};
+enum struct FilterOperator : short { EQ = 0, NE = 1, GT = 2, LT = 3, GE = 4, LE = 5 };
+enum struct FilterParamRequirement : int {};
+
+struct VariantParameterList {
+  struct Parameter {
+    std::size_t type;
+    void *ptr;
+    Parameter();
+  };
+  Parameter params[6];
+  VariantParameterList();
+  void clear();
+  void clearParameter(FilterSubject);
+  template <typename T> T *getParameter(FilterSubject) const;
+  template <typename T> void setParameter(FilterSubject, T *) const;
+  short getParameterCount() const;
+  std::size_t getParameterType(FilterSubject) const;
+  bool hasParameter(FilterSubject) const;
+};
+
+enum struct DataItemType : char {};
+enum struct CreativeItemCategory {};
+enum struct UseAnimation : char {};
+enum struct BlockShape { invalid = -1 };
+enum struct CooldownType { invalid = -1, chorus = 0, enderpear = 1, ice_bomb = 2 };
+
+struct Color {
+  float r, g, b, a;
+
+  Color(float, float, float, float);
+  Color();
+
+  template <typename Num> static Color from255Range(Num, Num, Num, Num);
+  static Color fromARGB(int);
+  static Color fromRGB(int);
+  static Color fromHSB(float, float, float);
+  static Color fromIntensity(float, float);
+
+  static Color lerp(Color const &, Color const &, float);
+
+  bool isNil() const;
+
+  bool operator!=(Color const &) const;
+  bool operator==(Color const &) const;
+  Color operator*(Color const &)const;
+  Color operator*(float)const;
+  Color operator/(float) const;
+  Color &operator+=(Color const &);
+  float &operator[](int) const;
+
+  Color brighter(float) const;
+  void clamp();
+  Color clamped() const;
+  float distanceFrom(Color const &);
+
+  unsigned toARGB() const;
+  unsigned toABGR() const;
+};
+
+template <typename T> struct NewType {
+  T value;
+  NewType();
+  NewType(T const &);
+  NewType(NewType const &);
+  operator T const &();
+  bool operator<(NewType const &);
+  bool operator==(NewType const &);
+  NewType &operator=(NewType const &);
+};
+
+struct NewBlockID : NewType<unsigned short> {
+  NewBlockID(unsigned short);
+};
+
+template <typename Type, typename Store> struct AutomaticID {
+  Store v;
+  AutomaticID();
+  AutomaticID(Store v)
+      : v(v) {}
+  Store value() const;
+  bool operator!=(AutomaticID const &) const;
+  bool operator==(AutomaticID const &) const;
+  operator Store() const { return v; }
+  static Store _makeRuntimeID();
+};
+
+struct Dimension;
+struct Biome;
+using DimensionId = AutomaticID<Dimension, int>;
+using BiomeId     = AutomaticID<Biome, int>;
+
+struct EntityId {
+  unsigned id;
+  EntityId(unsigned long);
+  operator unsigned &();
+  operator unsigned const() const;
+  bool operator==(EntityId const &) const;
+};

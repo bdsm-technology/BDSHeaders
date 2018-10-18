@@ -7,6 +7,7 @@
 
 struct LevelData;
 struct LevelSummary;
+struct Dimension;
 
 struct LevelSettings {
   int seed;                                         // 0
@@ -32,18 +33,19 @@ struct LevelSettings {
   bool lockedBehaviourPack;                         // 54
   bool lockedResourcePack;                          // 55
   bool fromLockedTemplate;                          // 56
-  bool _overrideSavedSettings;                      // 57
-  bool bonusChestEnabled;                           // 58
-  bool startWithMap;                                // 59
-  unsigned serverChunkTickRange;                    // 60
-  bool forceExperimentalGameplay;                   // 64
-  bool platformBroadcast;                           // 65
-  Social::GamePublishSetting platformBroadcastMode; // 68
-  Abilities defaultAbilities;                       // 72
-  BlockPos spawnPos;                                // 216
-  std::vector<PackInstanceId> behaviorPackIds;      // 232
-  std::vector<PackInstanceId> resourcePackIds;      // 256
-  GameRules rules;                                  // 280
+  bool msaGamertagsOnly;                            // 57
+  bool _overrideSavedSettings;                      // 58
+  bool bonusChestEnabled;                           // 59
+  bool startWithMap;                                // 60
+  unsigned serverChunkTickRange;                    // 64
+  bool forceExperimentalGameplay;                   // 68
+  bool platformBroadcast;                           // 69
+  Social::GamePublishSetting platformBroadcastMode; // 72
+  Abilities defaultAbilities;                       // 80
+  BlockPos spawnPos;                                // 224
+  std::vector<PackInstanceId> behaviorPackIds;      // 240
+  std::vector<PackInstanceId> resourcePackIds;      // 264
+  GameRules rules;                                  // 288
 
   LevelSettings(LevelData const &, DimensionId);
   LevelSettings(LevelSettings const &);
@@ -97,6 +99,8 @@ struct LevelSettings {
 
   bool shouldForceExperimentalGameplay();
   bool shouldOverrideSavedSettings();
+
+  bool useMsaGamertagsOnly() const;
 
   void overrideSavedSettings(LevelData &);
 

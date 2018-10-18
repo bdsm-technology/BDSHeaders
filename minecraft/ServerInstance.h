@@ -1,6 +1,7 @@
 #pragma once
 #include "RakNet/types.h"
 #include "spsc.h"
+#include "types.h"
 #include <atomic>
 #include <condition_variable>
 #include <functional>
@@ -8,6 +9,10 @@
 #include <mutex>
 #include <thread>
 
+struct IMinecraftApp;
+struct Whitelist;
+struct PermissionsMap;
+struct FilePathManager;
 struct AppPlatform;
 struct PushNotificationReceived;
 struct DedicatedServer;
@@ -16,10 +21,14 @@ struct NetworkHandler;
 struct LoopbackPacketSender;
 struct Timer;
 struct Scheduler;
-struct ChemistryOptions;
+struct EducationOptions;
 struct LevelStorage;
 struct VanillaServerGameplayEventListener;
 struct VanillaNetworkEventListener;
+struct IMinecraftEventing;
+struct LevelSettings;
+struct ResourcePackRepository;
+struct ContentTierManager;
 
 struct alignas(8) AppPlatformListener {
   AppPlatform *platform; // 8
@@ -48,7 +57,7 @@ struct ServerInstance : AppPlatformListener {
   std::unique_ptr<LoopbackPacketSender> loopbackPacketSender;                             // 40
   std::unique_ptr<Timer> timer1, timer2;                                                  // 48, 56
   std::unique_ptr<Scheduler> scheduler;                                                   // 64
-  std::unique_ptr<ChemistryOptions> chemistryOptions;                                     // 72
+  std::unique_ptr<EducationOptions> educationOptions;                                     // 72
   std::unique_ptr<LevelStorage> levelStorage;                                             // 80
   RakNet::RakNetGUID netGUID;                                                             // 88
   std::atomic_bool flag0;                                                                 // 104
@@ -63,6 +72,10 @@ struct ServerInstance : AppPlatformListener {
   std::mutex serverMtx;                                                                   // 232
   std::condition_variable cv;                                                             // 272
 
+  ServerInstance(IMinecraftApp &, Whitelist &, PermissionsMap const &, FilePathManager *, std::chrono::duration<long long, std::ratio<1ll, 1ll>>, std::string, std::string, std::string, LevelSettings,
+                 int, bool, int, int, int, bool, std::vector<std::string, std::allocator<std::string>> const &, std::string, mce::UUID const &, IMinecraftEventing &, ResourcePackRepository &,
+                 ContentTierManager const &, ResourcePackManager &, std::function<std::unique_ptr<LevelStorage>(Scheduler &)>, std::string const &, LevelData *, std::string, std::string,
+                 std::unique_ptr<EducationOptions>, ResourcePackManager *, std::function<void(std::string const &)>, std::function<void(std::string const &)>);
   virtual ~ServerInstance();
   virtual void onLowMemory();
   void _assertThread();
@@ -78,7 +91,6 @@ struct ServerInstance : AppPlatformListener {
   bool leaveGameSync();
   void queueForServerThread(std::function<void()> fn);
   bool resume();
-  void setChemistryOptions(std::unique_ptr<ChemistryOptions>);
   void startLeaveGame();
   void startServerThread();
   void stop();
