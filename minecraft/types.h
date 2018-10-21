@@ -733,3 +733,5 @@ enum struct PaletteColor : char {
   RED,
   BLACK,
 };
+enum struct EquipmentSlot {};
+enum struct MobSpawnMethod {};

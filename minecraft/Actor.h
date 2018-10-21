@@ -775,6 +775,7 @@ struct alignas(8) Actor {
   void updateInvisibilityStatus();
   void updateTickingData();
   bool wantsMoreFood();
+  void normalizeRotationWithDependency(float &, float &);
 
   virtual void reloadHardcoded(Actor::InitializationMethod, VariantParameterList const &);       // 0
   virtual void reloadHardcodedClient(Actor::InitializationMethod, VariantParameterList const &); // 8
@@ -919,7 +920,7 @@ struct alignas(8) Actor {
   virtual bool saveWithoutId(CompoundTag &);                                                     // 1128
   virtual bool load(CompoundTag const &);                                                        // 1136
   virtual bool loadLinks(CompoundTag const &, std::vector<ActorLink> &);                         // 1144
-  virtual ActorType getEntityTypeId(void);                                                       // 1152
+  virtual ActorType getEntityTypeId(void) = 0;                                                   // 1152
   virtual bool acceptClientsideEntityData(Player &, SetActorDataPacket const &);                 // 1160
   virtual void *queryEntityRenderer();                                                           // 1168
   virtual ActorUniqueID getSourceUniqueID() const;                                               // 1176
@@ -1036,3 +1037,392 @@ static_assert(4512 == offsetof(Actor, b4512));
 static_assert(4584 == offsetof(Actor, varmap));
 
 #undef DEF_COMPONENT
+
+struct CompassSpriteCalculator {
+  int frame;
+  int min;
+  int max;
+
+  CompassSpriteCalculator();
+  void calculateFrame(BlockSource const &, Vec3 const &, float);
+  void calculateFrame(BlockSource const &, float, float, float);
+  void updateFromPosition(BlockSource const &, float, float, float, bool);
+  void update(Actor &, bool);
+  int getFrame() const;
+};
+
+struct ClockSpriteCalculator {
+  int frame;
+  int min;
+  int max;
+
+  ClockSpriteCalculator();
+  void calculateFrame(BlockSource const &, Vec3 const &, float);
+  void calculateFrame(BlockSource const &, float, float, float);
+  void updateFromPosition(BlockSource const &, float, float, float, bool);
+  void update(Actor &, bool);
+  int getFrame() const;
+};
+
+struct MovementInterpolator {
+  Vec3 pos;    // 0
+  Vec2 tgt;    // 12
+  float yaw;   // 20
+  bool rot;    // 24
+  int step;    // 28
+  bool active; // 32
+
+  bool isActive();
+  void lerpTo(Vec3 const &, Vec2 const &, int);
+  void reset();
+  void setHeadYawLerpTarget(float);
+  void start();
+  void stop();
+  void tick(Actor &);
+};
+
+struct Goal;
+
+struct GoalSelector {
+  struct InternalGoal {
+    std::unique_ptr<Goal> goal; // 0
+    int priority;               // 8
+    bool used;                  // 12
+    bool to_start;              // 13
+
+    InternalGoal(int, std::unique_ptr<Goal>);
+    InternalGoal(InternalGoal &&);
+
+    InternalGoal &operator=(InternalGoal &&);
+
+    int getPriority() const;
+    bool getToStart() const;
+    bool getUsed() const;
+    void setPriority(int) const;
+    void setToStart(bool) const;
+    void setUsed(bool) const;
+
+    ~InternalGoal();
+  };
+  std::vector<InternalGoal> goals;
+
+  GoalSelector();
+  void addGoal(int, std::unique_ptr<Goal>);
+  void clearGoals();
+  void removeGoal(Goal *);
+  void stopGoals();
+  void onPlayerDimensionChanged(Player *, DimensionId);
+  void buildDebugInfo(std::string &);
+  void tick();
+  ~GoalSelector();
+};
+
+struct LookControl;
+struct BodyControl;
+struct Sensing;
+struct Village;
+struct PathNavigation;
+struct JumpControl;
+struct MoveControl;
+
+struct Mob : Actor {
+  enum struct TravelType {};
+  int unk4640;                                    // 4640
+  int unk4644;                                    // 4644
+  float yhead_rot;                                // 4648
+  char filler4652[4720 - 4652];                   // 4652
+  Vec3 v4720;                                     // 4720
+  CompassSpriteCalculator compass;                // 4732
+  ClockSpriteCalculator clock;                    // 4744
+  float xxa;                                      // 4756
+  float yya;                                      // 4760
+  float zza;                                      // 4764
+  float y_rot;                                    // 4768
+  char filler4772[12];                            // 4772
+  int time_along_swing;                           // 4784
+  int time_no_action;                             // 4788
+  int unk4792;                                    // 4792
+  float friction_modifier;                        // 4796
+  float flight_speed;                             // 4800
+  char filler4800[28];                            // 4804
+  float rider_locked_body_rot;                    // 4832
+  float rider_rot_limit;                          // 4836
+  MovementInterpolator interp;                    // 4840
+  char filler4876[12];                            // 4876
+  bool jumping;                                   // 4888
+  bool jump_vel_redux;                            // 4889
+  int unk4892;                                    // 4892
+  int unk4896;                                    // 4896
+  bool b4900;                                     // 4900
+  Vec3 v4904;                                     // 4904
+  float speed;                                    // 4916
+  std::unique_ptr<LookControl> lookCtl;           // 4920
+  std::unique_ptr<BodyControl> bodyCtl;           // 4928
+  std::unique_ptr<Sensing> sensing;               // 4936
+  GoalSelector goal4944;                          // 4944
+  GoalSelector goal4968;                          // 4968
+  bool surfaceMob;                                // 4992
+  bool natural_spawned;                           // 4993
+  bool b4994;                                     // 4994
+  std::weak_ptr<Village> village;                 // 5000
+  bool wants_to_be_jockey;                        // 5016
+  int unk5020;                                    // 5020
+  bool unk5024;                                   // 5024
+  ActorUniqueID auid5032;                         // 5032
+  ActorUniqueID auid5040;                         // 5040
+  ActorUniqueID auid5048;                         // 5048
+  ActorUniqueID auid5056;                         // 5056
+  ActorUniqueID carvanHead;                       // 5064
+  ActorUniqueID carvanTail;                       // 5072
+  int last_hurt_mob_timestamp;                    // 5080
+  int last_hurt_by_mob_timestamp;                 // 5084
+  int unk5088;                                    // 5088
+  int unk5092;                                    // 5092
+  int arrow_count;                                // 5096
+  int unk5100;                                    // 5100
+  int gliding_ticks;                              // 5104
+  bool b5108;                                     // 5108
+  BlockPos boundOrigin;                           // 5112
+  std::unique_ptr<PathNavigation> pathNavigation; // 5128
+  std::unique_ptr<JumpControl> jumpCtl;           // 5136
+  std::unique_ptr<MoveControl> moveCtl;           // 5144
+  MobSpawnMethod spawnMethod;                     // 5152
+  bool b5156;                                     // 5156
+
+  static int PLAYER_HURT_EXPERIENCE_TIME;
+  static int ABSORPTION_FACTOR_MAX;
+  static int ABSORPTION_FACTOR_MIN;
+  static int PLAYER_SWIMMING_SURFACE_OFFSET;
+  static int GLIDING_FALL_RESET_DELTA;
+  static int SLOW_FALL_GRAVITY;
+  static int DEFAULT_GRAVITY;
+
+  void calcMoveRelativeSpeed(TravelType);
+  void calculateAmbientSoundTime(int);
+  bool canPickUpLoot(ItemInstance const &) const;
+  bool checkTotemDeathProtection(ActorDamageSource const &);
+  void createAI(std::vector<GoalDefinition>);
+  void frostWalk();
+  void setBoundOrigin(BlockPos);
+  BlockPos getBoundOrigin() const;
+  bool hasBoundOrigin() const;
+  int getCaravanSize() const;
+  int getCurrentSwingDuration();
+  ActorUniqueID getFirstCaravanHead();
+  void setFlightSpeed(float);
+  float getFlightSpeed();
+  void setFrictionModifier(float);
+  float getFrictionModifier();
+  int getGlidingTicks() const;
+  ItemInstance const &getItemSlot(EquipmentSlot) const;
+  JumpControl &getJumpControl();
+  LookControl &getLookControl();
+  MoveControl &getMoveControl();
+  PathNavigation &getNavigation();
+  Sensing &getSensing();
+  int getLastHurtByMobTimestamp();
+  int getLastHurtMobTimestamp();
+  int getNoActionTime() const;
+  void setSpawnMethod(MobSpawnMethod);
+  MobSpawnMethod getSpawnMethod();
+  TravelType getTravelType();
+  std::weak_ptr<Village> getVillage();
+  std::weak_ptr<Village> const &getVillage() const;
+  void setXxa(float);
+  void setYya(float);
+  void setZza(float);
+  float getXxa() const;
+  float getYya() const;
+  float getZza() const;
+  void setYHeadRotA(float);
+  void setYRotA(float);
+  float getYRotA() const;
+  void incrementArrowCount(int);
+  bool isFrostWalking() const;
+  bool isGliding() const;
+  void setIsLayingEgg(bool);
+  bool isLayingEgg() const;
+  void setNaturallySpawned(bool);
+  bool isNaturallySpawned() const;
+  void setIsPregnant(bool);
+  bool isPregnant() const;
+  void lerpTo(Vec3 const &, Vec2 const &, float, int);
+  void loadArmor(ListTag const *);
+  std::unique_ptr<ListTag> saveArmor();
+  void loadMainhand(ListTag const *);
+  std::unique_ptr<ListTag> saveMainhand();
+  void loadOffhand(ListTag const *);
+  std::unique_ptr<ListTag> saveOffhand();
+  void onPlayerJump(int);
+  void pickUpItem(ItemActor &);
+  void playBornSound();
+  void playSpawnSound();
+  void registerAttributes();
+  void resetAttributes();
+  void setJumpVelRedux(bool);
+  void setJumping(bool);
+  void setRiderLockedBodyRot(float);
+  void setRiderRotLimit(float);
+  void setSpeedModifier(float);
+  void setSurfaceMob(bool);
+  void setWantsToBeJockey(bool);
+  bool wantsToBeJockey() const;
+  bool shouldApplyWaterGravity();
+  void snapToYHeadRot(float);
+  void stopAI();
+  void tickAttributes();
+  void tickEffects();
+  void tickMagmaDamage();
+  void updateAttackAnim();
+  void updateMobId(ActorUniqueID &);
+
+  virtual void reloadHardcodedClient(Actor::InitializationMethod, VariantParameterList const &) override; // 8
+  virtual void initializeComponents(Actor::InitializationMethod, VariantParameterList const &) override;  // 16
+  virtual bool hasComponent(Util::HashString const &) const override;                                     // 32
+  virtual ~Mob() override;                                                                                // 56, 64
+  virtual Vec2 getInterpolatedBodyRot(float) const override;                                              // 168
+  virtual void teleportTo(Vec3 const &, bool, int, int) override;                                         // 208
+  virtual void lerpTo(Vec3 const &, Vec2 const &, int) override;                                          // 232
+  virtual void normalTick() override;                                                                     // 248
+  virtual void baseTick() override;                                                                       // 256
+  virtual void rideTick() override;                                                                       // 264
+  virtual bool startRiding(Actor &) override;                                                             // 288
+  virtual void addRider(Actor &) override;                                                                // 296
+  virtual void playerTouch(Player &) override;                                                            // 584
+  virtual bool isImmobile() const override;                                                               // 632
+  virtual bool isPickable() override;                                                                     // 648
+  virtual bool isPushable() const override;                                                               // 664
+  virtual bool isShootable() override;                                                                    // 680
+  virtual bool isSneaking() const override;                                                               // 688
+  virtual bool isAlive() const override;                                                                  // 696
+  virtual bool isSurfaceMob() const override;                                                             // 278
+  virtual void setTarget(Actor *) override;                                                               // 752
+  virtual bool attack(Actor &) override;                                                                  // 776
+  virtual bool canPowerJump() const override;                                                             // 872
+  virtual void animateHurt() override;                                                                    // 880
+  virtual bool doFireHurt(int) override;                                                                  // 936
+  virtual void handleEntityEvent(ActorEvent, int) override;                                               // 968
+  virtual void setEquippedSlot(ArmorSlot, int, int) override;                                             // 1064
+  virtual void setEquippedSlot(ArmorSlot, ItemInstance const &) override;                                 // 1072
+  virtual void setOnFire(int) override;                                                                   // 1184
+  virtual void causeFallDamage(float) override;                                                           // 1272
+  virtual bool canBePulledIntoVehicle() const override;                                                   // 1320
+  virtual bool inCaravan() const override;                                                                // 1328
+  virtual void stopRiding(bool, bool, bool) override;                                                     // 1368
+  virtual void buildDebugInfo(std::string &) const override;                                              // 1392
+  virtual int getDeathTime() const override;                                                              // 1424
+  virtual void swing() override;                                                                          // 1504
+  virtual float getYHeadRot() const override;                                                             // 1576
+  virtual float getYawSpeedInDegreesPerSecond() const override;                                           // 1656
+  virtual void renderDebugServerState(Options const &) override;                                          // 1712
+  virtual void die(ActorDamageSource const &) override;                                                   // 1736
+  virtual void outOfWorld() override;                                                                     // 1776
+  virtual bool _hurt(ActorDamageSource const &, int, bool, bool) override;                                // 1784
+  virtual void readAdditionalSaveData(CompoundTag const &) override;                                      // 1808
+  virtual void addAdditionalSaveData(CompoundTag &) override;                                             // 1816
+  virtual void _playStepSound(BlockPos const &, Block const &) override;                                  // 1824
+  virtual void _removeRider(ActorUniqueID const &, bool, bool) override;                                  // 1912
+  virtual void onSizeUpdated() override;                                                                  // 1920
+  virtual void knockback(Actor *, int, float, float, float, float, float);                                // 1936
+  virtual void resolveDeathLoot(bool, int, ActorDamageSource const &);                                    // 1944
+  virtual void spawnAnim();                                                                               // 1952
+  virtual bool isSleeping() const;                                                                        // 1960
+  virtual void setSneaking(bool);                                                                         // 1968
+  virtual bool isSprinting() const;                                                                       // 1976
+  virtual void setSprinting(bool);                                                                        // 1984
+  virtual float getVoicePitch();                                                                          // 1992
+  virtual void playAmbientSound();                                                                        // 2000
+  virtual int getAmbientSound();                                                                          // 2008
+  virtual int getAmbientSoundPostponeTicks();                                                             // 2016
+  virtual TextureUVCoordinateSet const &getItemInHandIcon(ItemInstance const &, int);                     // 2024
+  virtual float getSpeed() const;                                                                         // 2036
+  virtual void setSpeed(float);                                                                           // 2040
+  virtual float getWaterSpeed() const;                                                                    // 2048
+  virtual bool isJumping() const;                                                                         // 2056
+  virtual float getJumpPower() const;                                                                     // 2064
+  virtual bool hurtEffects(ActorDamageSource const &, int, bool, bool);                                   // 2072
+  virtual int getMeleeWeaponDamageBonus(Mob *);                                                           // 2080
+  virtual int getMeleeKnockbackBonus();                                                                   // 2088
+  virtual void actuallyHurt(int, ActorDamageSource const *, bool);                                        // 2096
+  virtual void travel(float, float, float);                                                               // 2104
+  virtual float applyFinalFriction(float, bool);                                                          // 2112
+  virtual void updateWalkAnim();                                                                          // 2120
+  virtual void aiStep();                                                                                  // 2128
+  virtual void pushEntities();                                                                            // 2136
+  virtual void lookAt(Actor *, float, float);                                                             // 2144
+  virtual bool isLookingAtAnEntity();                                                                     // 2152
+  virtual bool checkSpawnRules(bool);                                                                     // 2160
+  virtual bool checkSpawnObstruction() const;                                                             // 2168
+  virtual bool shouldDespawn() const;                                                                     // 2176
+  virtual float getAttackAnim(float);                                                                     // 2184
+  virtual void performRangedAttack(Actor &, float);                                                       // 2192
+  virtual int getItemUseDuration();                                                                       // 2200
+  virtual int getItemUseStartupProgress();                                                                // 2208
+  virtual int getItemuseIntervalProgress();                                                               // 2216
+  virtual int getItemuseIntervalAxis();                                                                   // 2224
+  virtual int getTimeAlongSwing();                                                                        // 2232
+  virtual void ate();                                                                                     // 2240
+  virtual float getMaxHeadXRot();                                                                         // 2248
+  virtual Mob *getLastHurtByMob();                                                                        // 2256
+  virtual void setLastHurtByMob(Mob *);                                                                   // 2264
+  virtual Player *getLastHurtByPlayer(void);                                                              // 2272
+  virtual void setLastHurtByPlayer(Player *);                                                             // 2280
+  virtual Actor *getLastHurtMob(void);                                                                    // 2288
+  virtual void setLastHurtMob(Actor *);                                                                   // 2296
+  virtual bool isAlliedTo(Mob *);                                                                         // 2304
+  virtual bool doHurtTarget(Actor *);                                                                     // 2312
+  virtual bool canBeControlledByRider();                                                                  // 2320
+  virtual void leaveCaravan();                                                                            // 2328
+  virtual void joinCaravan(Mob *);                                                                        // 2336
+  virtual bool hasCaravanTail() const;                                                                    // 2344
+  virtual ActorUniqueID getCaravanHead() const;                                                           // 2352
+  virtual int getEquipmentCount() const;                                                                  // 2360
+  virtual int getArmorValue();                                                                            // 2368
+  virtual float getArmorCoverPercentage() const;                                                          // 2376
+  virtual void hurtArmor(int);                                                                            // 2384
+  virtual void containerChanged(int);                                                                     // 2392
+  virtual void updateEquipment();                                                                         // 2400
+  virtual void clearEquipment();                                                                          // 2408
+  virtual std::vector<ItemInstance const *> getAllArmor() const;                                          // 2416
+  virtual std::vector<int> getAllArmorID();                                                               // 2424
+  virtual std::vector<ItemInstance const *> getAllHand() const;                                           // 2432
+  virtual std::vector<ItemInstance const *> getAllEquipment() const;                                      // 2440
+  virtual std::size_t getArmorTypeHash();                                                                 // 2448
+  virtual void sendInventory(bool);                                                                       // 2456
+  virtual void sendArmor();                                                                               // 2464
+  virtual int getDamageAfterMagicAbsorb(ActorDamageSource const &, int);                                  // 2472
+  virtual void createAIGoals();                                                                           // 2480
+  virtual void onBorn(Mob &, Mob &);                                                                      // 2488
+  virtual void onLove();                                                                                  // 2496
+  virtual void setItemSlot(EquipmentSlot, ItemInstance const &);                                          // 2504
+  virtual void goDownInWater();                                                                           // 2512
+  virtual float getWaterSlowDown() const;                                                                 // 2520
+  virtual void attackAnimation(Actor *, float);                                                           // 2528
+  virtual int getAttackTime();                                                                            // 2536
+  virtual void _getWalkTargetValue(BlockPos const &);                                                     // 2544
+  virtual bool canExistWhenDisallowMob() const;                                                           // 2552
+  virtual bool _removeWhenFarAway();                                                                      // 2560
+  virtual void jumpFromGround();                                                                          // 2568
+  virtual void updateAi();                                                                                // 2576
+  virtual void newServerAiStep();                                                                         // 2584
+  virtual void _serverAiMobStep();                                                                        // 2592
+  virtual int getDamageAfterEnchantReduction(ActorDamageSource const &, int);                             // 2600
+  virtual int getDamageAfterArmorAbsorb(ActorDamageSource const &, int);                                  // 2608
+  virtual int getExperienceReward() const;                                                                // 2616
+  virtual void dropEquipment(ActorDamageSource const &, int);                                             // 2624
+  virtual void dropEquipment();                                                                           // 2632
+  virtual void dropBags();                                                                                // 2640
+  virtual void dropContainer();                                                                           // 2648
+  virtual bool useNewAi() const;                                                                          // 2656
+  virtual void tickDeath();                                                                               // 2664
+  virtual void _endJump();                                                                                // 2672
+  virtual void updateGliding();                                                                           // 2680
+};
+
+static_assert(4640 == offsetof(Mob, unk4640));
+static_assert(4720 == offsetof(Mob, v4720));
+static_assert(4800 == offsetof(Mob, flight_speed));
+static_assert(4900 == offsetof(Mob, b4900));
+static_assert(5000 == offsetof(Mob, village));
+static_assert(5100 == offsetof(Mob, unk5100));
+static_assert(5156 == offsetof(Mob, b5156));
