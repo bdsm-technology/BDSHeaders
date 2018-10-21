@@ -7,7 +7,7 @@
 #include "types.h"
 #include <set>
 
-struct Description {
+struct alignas(8) Description {
   Description();
   Description(Description const &);
 
@@ -715,7 +715,7 @@ struct ProjectileDescription : ComponentDescription {
   bool destroyOnHurt;                                     // 338
   bool stopOnHurt;                                        // 339
   bool critParticleOnHurt;                                // 340
-  bool unk341;                                            // 341
+  bool shootTarget;                                       // 341
   bool homing;                                            // 342
   bool shouldbounce;                                      // 343
   bool fireAffectedByGriefing;                            // 344
@@ -943,7 +943,7 @@ struct BucketableDescription : ComponentDescription {
 };
 
 struct BehaviorTreeDescription : ComponentDescription {
-  std::string unk; // 8
+  std::string name; // 8
   MIN_DESC(BehaviorTreeDescription);
 };
 

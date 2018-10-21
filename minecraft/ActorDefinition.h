@@ -129,7 +129,7 @@ struct ActorDefinitionGroup {
   virtual ~ActorDefinitionGroup();
 };
 
-struct ActorDefinition {
+struct alignas(8) ActorDefinition {
   ActorDefinitionDescriptor mActorDefinitionDescriptor;    // 0
   IdentifierDescription mIdentifierDesc;                   // 1120
   std::vector<GoalDefinition> goals;                       // 1160

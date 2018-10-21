@@ -3,9 +3,9 @@
 #include "types.h"
 
 struct DataItem {
-  DataItemType type;
-  unsigned short id;
-  bool dirty;
+  DataItemType type; // 8
+  unsigned short id; // 12
+  bool dirty;        // 14
   DataItem(DataItemType, unsigned short);
   unsigned short getId() const;
   DataItemType getType() const;
@@ -18,14 +18,14 @@ struct DataItem {
 };
 
 template <typename T> struct DataItem2 : DataItem {
-  T data;
+  T data; // 16
   DataItem2(DataItemType, unsigned short, T const &);
   virtual ~DataItem2();
   virtual std::unique_ptr<DataItem> clone() const;
 };
 
 template <typename T> struct DataItem2Flag : DataItem {
-  T data;
+  T data; // 16
   void clearFlag(long);
   void setFlag(long);
   long getFlag() const;
@@ -44,8 +44,8 @@ template <> struct DataItem2<char> : DataItem2Flag<char> {
 
 struct SynchedActorData {
   std::vector<std::unique_ptr<DataItem>> items; // 0
-  unsigned short unk24;
-  unsigned short unk26;
+  unsigned short unk24;                         // 24
+  unsigned short unk26;                         // 26
 
   SynchedActorData();
   SynchedActorData(SynchedActorData &&);
@@ -68,7 +68,7 @@ struct SynchedActorData {
   long long getInt64(unsigned short) const;
   float getFloat(unsigned short) const;
   Vec3 getVec3(unsigned short) const;
-  std::string getString(unsigned short) const;
+  std::string const &getString(unsigned short) const;
   ItemInstance getItemInstance(unsigned short) const;
 
   std::vector<std::unique_ptr<DataItem>> packAll() const;

@@ -6,6 +6,7 @@
 #include <memory>
 #include <unordered_map>
 #include <vector>
+#include "Actor.h"
 
 struct GameCallbacks;
 struct SkinInfoFactory;
@@ -36,25 +37,6 @@ struct TextFilteringProcessor;
 namespace entt {
 template <typename T> struct Registry;
 }
-
-struct EntityContext;
-
-struct EntityRegistry {
-  entt::Registry<EntityId> *reg;
-  template <typename T0, typename T1, typename T2> struct View {
-    EntityRegistry *reg;
-    View(EntityRegistry &);
-    template <typename F> void each(F f);
-  };
-  bool isValidEntity(EntityContext const &);
-  template <typename T> void removeComponentFromAllEntities();
-  template <typename T0, typename T1, typename T2, typename F> void viewEach(F);
-};
-
-struct IEntityRegistryOwner {
-  virtual ~IEntityRegistryOwner();
-  virtual EntityRegistry &getEntityRegistry() = 0;
-};
 
 struct Minecraft : IEntityRegistryOwner {
   GameCallbacks *callbacks;                                 // 8

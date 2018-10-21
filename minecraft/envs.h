@@ -24,7 +24,7 @@ struct SnapshotFilenameAndLength {
 
 struct EncryptedProxyEnv : leveldb::EnvWrapper {
   leveldb::Env *env;      // 16
-  std::string str24;      // 24
+  std::string key;        // 24
   std::string content_id; // 56
   EncryptedProxyEnv(leveldb::Env *, ContentIdentity const &, std::string const &);
   virtual ~EncryptedProxyEnv();
