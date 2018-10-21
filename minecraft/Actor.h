@@ -205,7 +205,7 @@ struct IEntityRegistryOwner {
 struct OwnerStorageEntity {
   struct EntityContextOwned {
     EntityRegistryOwned &owned;
-    EntityContextStackRef context;
+    EntityContextStackRef &context;
     EntityContextOwned(EntityRegistryOwned &);
     void destroy();
   };
@@ -291,9 +291,9 @@ struct MobEffect;
 struct alignas(8) Actor {
   enum struct InitializationMethod : char {};
   OwnerPtrT<EntityRefTraits> entityRef;                        // 8
-  bool unk32;                                                  // 32
+  alignas(8) bool unk32;                                       // 32
   VariantParameterList vplist;                                 // 40
-  DimensionId dim;                                             // 68
+  DimensionId dim;                                             // 136
   bool in_world;                                               // 140
   void *unk144;                                                // 144
   std::unique_ptr<ActorDefinitionDescriptor> mActorDefinition; // 152
@@ -305,10 +305,12 @@ struct alignas(8) Actor {
   int unk204;                                                  // 204
   ChunkPos chunk;                                              // 208
   Vec3 pos;                                                    // 216
+  char filler228[6];                                           // 228
   int unk236;                                                  // 236
   SynchedActorData data;                                       // 240
   std::unique_ptr<SpatialActorNetworkData> actorNetworkData;   // 272
   Vec3 pos2;                                                   // 280
+  char filler292[4];                                           // 292
   int unk296;                                                  // 296
   bool b300;                                                   // 300
   bool b301;                                                   // 301
@@ -324,6 +326,7 @@ struct alignas(8) Actor {
   int unk360;                                                  // 360
   int unk364;                                                  // 364
   int unk368;                                                  // 368
+  char filler372[12];                                          // 372
   std::vector<AABB> bbox;                                      // 384
   int unk408;                                                  // 408
   int riding_height;                                           // 412
@@ -465,9 +468,12 @@ struct alignas(8) Actor {
   bool safeToSleepNear;                                        // 3912
   ActorTerrainInterlockData terrainInterlockData;              // 3920
   SimpleContainer armorContainer;                              // 3944 size: 4
+  char filler4216[16];                                         // 4216
   SimpleContainer handContainer;                               // 4232 size: 2
+  char filler4504[8];                                          // 4504
   bool b4512;                                                  // 4512
   std::vector<AABB> aabbs;                                     // 4520
+  char filler4544[4552 - 4544];                                // 4544
   bool collidable_mob_near;                                    // 4552
   bool collidable_mob;                                         // 4553
   bool chained_damage_effect;                                  // 4554
@@ -759,8 +765,8 @@ struct alignas(8) Actor {
   void spawnEatParticles();
   void spawnTamingParticles();
   void teleportRidersTo(Vec3 const &, int, int);
-  bool testForCollidableMobs(BlockSource &,AABB const&,std::vector<AABB,std::allocator<AABB>> &);
-  bool testForEntityStacking(BlockSource &,AABB const&,std::vector<AABB,std::allocator<AABB>> &);
+  bool testForCollidableMobs(BlockSource &, AABB const &, std::vector<AABB, std::allocator<AABB>> &);
+  bool testForEntityStacking(BlockSource &, AABB const &, std::vector<AABB, std::allocator<AABB>> &);
   bool tick(BlockSource &);
   void transferTickingArea(Dimension &);
   void updateBBFromDescription();
@@ -1012,5 +1018,21 @@ struct alignas(8) Actor {
   virtual void onSizeUpdated();                                                                  // 1920
   virtual void _doAutoAttackOnTouch(Actor &);                                                    // 1928
 };
+
+static_assert(32 == offsetof(Actor, unk32));
+static_assert(140 == offsetof(Actor, in_world));
+static_assert(200 == offsetof(Actor, swim_amount));
+static_assert(300 == offsetof(Actor, b300));
+static_assert(408 == offsetof(Actor, unk408));
+static_assert(500 == offsetof(Actor, v500));
+static_assert(600 == offsetof(Actor, riders));
+static_assert(3216 == offsetof(Actor, auid3216));
+static_assert(3264 == offsetof(Actor, baseAttributeMap));
+static_assert(3672 == offsetof(Actor, aabbShape));
+static_assert(3808 == offsetof(Actor, b3808));
+static_assert(3904 == offsetof(Actor, b3904));
+static_assert(4232 == offsetof(Actor, handContainer));
+static_assert(4512 == offsetof(Actor, b4512));
+static_assert(4584 == offsetof(Actor, varmap));
 
 #undef DEF_COMPONENT
