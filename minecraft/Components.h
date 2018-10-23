@@ -21,7 +21,6 @@ struct UpdateEquipPacket;
 struct OnHitSubcomponent;
 struct CompoundTag;
 struct AttributeModifier;
-enum struct ContainerID;
 struct Command;
 struct CommandOrigin;
 struct NpcAction;

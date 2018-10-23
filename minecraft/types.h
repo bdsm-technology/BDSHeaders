@@ -241,6 +241,7 @@ enum struct GamePublishSetting {};
 
 enum struct ActorType {};
 enum struct ParticleType {};
+enum struct ContainerID : char {};
 enum struct ContainerType : char {
   NONE                   = -9,
   INVENTORY              = -1,

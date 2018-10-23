@@ -1506,8 +1506,7 @@ struct alignas(8) Player : Mob {
   std::string s5632;                                                     // 5632
   std::string s5664;                                                     // 5664
   void *unk5696;                                                         // 5696
-  void *unk5704;                                                         // 5704
-  void *unk5712;                                                         // 5712
+  mce::UUID uuid;                                                        // 5704
   std::unique_ptr<Certificate> cert;                                     // 5720
   std::string s5728;                                                     // 5728
   int unk5760;                                                           // 5760
@@ -1862,6 +1861,9 @@ struct alignas(8) Player : Mob {
   virtual void openCommandBlockMinecart(ActorUniqueID const &);                                             // 2976
   virtual void openHorseInventory(ActorUniqueID const &);                                                   // 2984
   virtual bool canOpenContainerScreen();                                                                    // 3000
+  virtual void openChalkboard(ChalkboardBlockActor &, bool);                                                // 3008
+  virtual void openNpcInteractScreen(Actor &);                                                              // 3016
+  virtual void openInventory();                                                                             // 3024
   virtual void openStructureEditor(BlockPos const &);                                                       // 3032
   virtual void openLabTable(BlockPos const &);                                                              // 3040
   virtual void openElementConstructor(BlockPos const &);                                                    // 3048
@@ -1916,7 +1918,7 @@ static_assert(5160 == offsetof(Player, unk5160));
 static_assert(5200 == offsetof(Player, b5200));
 static_assert(5416 == offsetof(Player, netId));
 static_assert(5600 == offsetof(Player, s5600));
-static_assert(5704 == offsetof(Player, unk5704));
+static_assert(5704 == offsetof(Player, uuid));
 static_assert(5800 == offsetof(Player, chunk_source1));
 static_assert(6072 == offsetof(Player, client_sub_id));
 static_assert(6112 == offsetof(Player, respawn_ready));
@@ -1927,3 +1929,158 @@ static_assert(6608 == offsetof(Player, inv_trans_mgr));
 static_assert(6648 == offsetof(Player, game_mode));
 static_assert(6704 == offsetof(Player, forced_respawn));
 static_assert(6792 == offsetof(Player, device_id));
+
+struct NetworkHandler;
+
+struct IContainerManager {
+  virtual ~IContainerManager();                        // 0, 8
+  virtual ContainerID getContainerId() const      = 0; // 16
+  virtual void setContainerId(ContainerID)        = 0; // 24
+  virtual ContainerType getContainerType()        = 0; // 32
+  virtual void setContainerType(ContainerType)    = 0; // 40
+  virtual std::vector<ItemInstance> getItems()    = 0; // 48
+  virtual void setSlot(int, ItemInstance const &) = 0; // 56
+  virtual void setData(int, int)                  = 0; // 72
+  virtual void broadcastChanges(void)             = 0; // 80
+};
+struct BaseContainerMenu : ContainerContentChangeListener, IContainerManager {
+  Player *player;                  // 16
+  std::vector<ItemInstance> items; // 24
+  ContainerID id;                  // 48
+  ContainerType type;              // 49
+  BaseContainerMenu(Player &player, ContainerType);
+
+  virtual bool containerContentChanged(int) override;           // 0
+  virtual ~BaseContainerMenu() override;                        // 8, 16 | (19) 0, 8
+  virtual void removeSlot(int, int) = 0;                        // 24
+  virtual bool isSlotDirty(int);                                // 32
+  virtual bool isResultSlot(int);                               // 40
+  virtual std::vector<ItemInstance> getItems() override    = 0; // 48 | (19) 48
+  virtual void setSlot(int, ItemInstance const &) override = 0; // 56 | (19) 56
+  virtual ItemInstance &getSlot(int)                       = 0; // 64 | (19) 64
+  virtual void setData(int, int) override;                      // 72 | (19) 72
+  virtual ContainerID getContainerId() const override;          // 80 | (19) 16
+  virtual void setContainerId(ContainerID) override;            // 88 | (19) 24
+  virtual ContainerType getContainerType() override;            // 96 | (19) 32
+  virtual void setContainerType(ContainerType) override;        // 104 | (19) 40
+  virtual void broadcastChanges(void) override;                 // 112 | (19) 80
+};
+
+struct InventoryMenu : BaseContainerMenu {
+  Container *container; // 56
+  InventoryMenu(Player &, Container *);
+
+  virtual bool containerContentChanged(int) override;       // 0
+  virtual ~InventoryMenu() override;                        // 8, 16 | (19) 0, 8
+  virtual void removeSlot(int, int) override;               // 24
+  virtual bool isSlotDirty(int) override;                   // 32
+  virtual bool isResultSlot(int) override;                  // 40
+  virtual std::vector<ItemInstance> getItems() override;    // 48 | (19) 48
+  virtual void setSlot(int, ItemInstance const &) override; // 56 | (19) 56
+  virtual ItemInstance &getSlot(int) override;              // 64 | (19) 64
+  virtual ContainerID getContainerId() const override;      // 80 | (19) 16
+  virtual void setContainerId(ContainerID) override;        // 88 | (19) 24
+  virtual ContainerType getContainerType() override;        // 96 | (19) 32
+  virtual void setContainerType(ContainerType) override;    // 104 | (19) 40
+  virtual void broadcastChanges(void) override;             // 112 | (19) 80
+};
+
+struct ServerPlayer : Player {
+  struct QueuedChunk;
+  NetworkHandler *network_handler;                    // 6824
+  std::function<void(ServerPlayer &)> callbacks;      // 6832
+  InventoryMenu invertory;                            // 6864
+  bool b6928;                                         // 6928
+  int unk6932;                                        // 6932
+  bool b6936;                                         // 6936
+  bool b6937;                                         // 6937
+  bool b6938;                                         // 6938
+  bool b6939;                                         // 6939
+  std::unique_ptr<CompoundTag> lost_data;             // 6944
+  int unk6952;                                        // 6952
+  std::unique_ptr<PlayerChunkSource> chunk_source;    // 6960
+  int client_chunk_radius;                            // 6968
+  int unk6972;                                        // 6972
+  bool b6976;                                         // 6976
+  std::vector<QueuedChunk> queued_chunks;             // 6984
+  std::unordered_map<ActorUniqueID, Actor *> map7008; // 7008
+  std::unordered_set<ActorUniqueID> set7064;          // 7064
+  ServerPlayer(Level &, PacketSender &, NetworkHandler &, GameType, NetworkIdentifier const &, unsigned char, std::function<void(ServerPlayer &)>, std::unique_ptr<SkinInfoData>, mce::UUID,
+               std::string const &, std::unique_ptr<Certificate>, int);
+
+  void doDeleteContainerManager();
+  InventoryMenu &getInventoryMenu();
+  void selectItem(ItemInstance const &, int const &);
+  void sendMobEffectPackets();
+  void setClientChunkRadius(int);
+  void setLostDataTag(std::unique_ptr<CompoundTag, std::default_delete<CompoundTag> >);
+  void setPlayerInput(float, float, bool, bool);
+
+  void disconnect();
+  virtual ~ServerPlayer() override;                                                                              // 56,64
+  virtual void normalTick() override;                                                                            // 248
+  virtual void push(Vec3 const &) override;                                                                      // 600
+  virtual void partialPush(Vec3 const &) override;                                                               // 624
+  virtual bool isValidTarget(Actor *) const override;                                                            // 768
+  virtual void setArmor(ArmorSlot, ItemInstance const &) override;                                               // 1048
+  virtual void changeDimension(DimensionId, bool) override;                                                      // 1240
+  virtual ActorUniqueID getControllingPlayer() const override;                                                   // 1256
+  virtual void checkFallDamage(float, bool) override;                                                            // 1264
+  virtual void handleFallDistanceOnServer(float, bool) override;                                                 // 1280
+  virtual void onEffectAdded(MobEffectInstance &) override;                                                      // 1472
+  virtual void onEffectUpdated(MobEffectInstance const &) override;                                              // 1480
+  virtual void onEffectRemoved(MobEffectInstance &) override;                                                    // 1488
+  virtual void die(ActorDamageSource const &) override;                                                          // 1736
+  virtual void knockback(Actor *, int, float, float, float, float, float) override;                              // 1936
+  virtual void aiStep() override;                                                                                // 2128
+  virtual void hurtArmor(int) override;                                                                          // 2384
+  virtual void sendInventory(bool) override;                                                                     // 2456
+  virtual void prepareRegion(ChunkSource &) override;                                                            // 2688
+  virtual void destroyRegion() override;                                                                         // 2969
+  virtual void changeDimensionWithCredits(DimensionId) override;                                                 // 2728
+  virtual void tickWorld(Tick const &) override;                                                                 // 2736
+  virtual void moveView() override;                                                                              // 2752
+  virtual void checkMovementStats(Vec3 const &) override;                                                        // 2768
+  virtual void setPermissions(CommandPermissionLevel) override;                                                  // 2832
+  virtual void openContainer(BlockPos const &) override;                                                         // 2872
+  virtual void openContainer(ActorUniqueID const &) override;                                                    // 2880
+  virtual void openFurnace(BlockPos const &) override;                                                           // 2888
+  virtual void openAnvil(BlockPos const &) override;                                                             // 2904
+  virtual void openBrewingStand(BlockPos const &) override;                                                      // 2912
+  virtual void openHopper(BlockPos const &) override;                                                            // 2920
+  virtual void openHopper(ActorUniqueID const &) override;                                                       // 2928
+  virtual void openDispenser(BlockPos const &, bool) override;                                                   // 2936
+  virtual void openBeacon(BlockPos const &) override;                                                            // 2944
+  virtual void openPortfolio() override;                                                                         // 2952
+  virtual void openCommandBlock(BlockPos const &) override;                                                      // 2968
+  virtual void openCommandBlockMinecart(ActorUniqueID const &) override;                                         // 2976
+  virtual void openHorseInventory(ActorUniqueID const &) override;                                               // 2984
+  virtual void openNpcInteractScreen(Actor &) override;                                                          // 3016
+  virtual void openInventory() override;                                                                         // 3024
+  virtual void openStructureEditor(BlockPos const &) override;                                                   // 3032
+  virtual void openLabTable(BlockPos const &) override;                                                          // 3040
+  virtual void openElementConstructor(BlockPos const &) override;                                                // 3048
+  virtual void openCompoundCreator(BlockPos const &) override;                                                   // 3056
+  virtual void openMaterialReducer(BlockPos const &) override;                                                   // 3064
+  virtual void displayLocalizableMessage(std::string const &, std::vector<std::string> const &, bool) override;  // 3088
+  virtual void displayWhisperMessage(std::string const &, std::string const &) override;                         // 3096
+  virtual void stopSleepInBed(bool, bool) override;                                                              // 3112
+  virtual bool isHostingPlayer() const override;                                                                 // 3160
+  virtual bool isLoading() const override;                                                                       // 3168
+  virtual bool isPlayerInitialized() const override;                                                             // 3176
+  virtual void setPlayerGameType(GameType) override;                                                             // 3208
+  virtual void setContainerData(IContainerManager &, int, int) override;                                         // 3264
+  virtual void slotChanged(IContainerManager &, int, ItemInstance const &, ItemInstance const &, bool) override; // 3272
+  virtual void refreshContainer(IContainerManager &, std::vector<ItemInstance> const &) override;                // 3288
+  virtual void deleteContainerManager() override;                                                                // 3296
+  virtual bool isPositionRelevant(DimensionId, BlockPos const &) override;                                       // 3312
+  virtual bool isEntityRelevant(Actor const &) override;                                                         // 3320
+  virtual bool isTeacher() const override;                                                                       // 3328
+  virtual void onSuspension() override;                                                                          // 3336
+  virtual void onLinkedSlotsChanged() override;                                                                  // 3344
+  virtual void sendInventoryTransaction(InventoryTransaction const &) override;                                  // 3376
+  virtual void sendComplexInventoryTransaction(std::unique_ptr<ComplexInventoryTransaction>) override;           // 3384
+  virtual void sendNetworkPacket(Packet &) override;                                                             // 3392
+  virtual void chorusFruitTeleport() override;                                                                   // 3400
+  virtual ServerPlayerEventCoordinator &getPlayerEventCoordinator() override;                                    // 3416
+};
