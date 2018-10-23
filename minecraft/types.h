@@ -666,6 +666,9 @@ namespace std {
 template <> struct hash<HashType64> {
   std::size_t operator()(HashType64 const &v) const { return v.value; }
 };
+template <> struct hash<ActorUniqueID> {
+  std::size_t operator()(ActorUniqueID const &v) const { return v.getHash(); }
+};
 } // namespace std
 
 struct HashedString {

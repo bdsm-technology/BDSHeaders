@@ -2084,3 +2084,7 @@ struct ServerPlayer : Player {
   virtual void chorusFruitTeleport() override;                                                                   // 3400
   virtual ServerPlayerEventCoordinator &getPlayerEventCoordinator() override;                                    // 3416
 };
+
+static_assert(6824 == offsetof(ServerPlayer, network_handler));
+static_assert(6928 == offsetof(ServerPlayer, b6928));
+static_assert(7008 == offsetof(ServerPlayer, map7008));
