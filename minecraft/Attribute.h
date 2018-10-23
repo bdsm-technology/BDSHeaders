@@ -175,6 +175,8 @@ struct AttributeInstance {
   std::vector<AttributeInstanceHandle> const &getListeners() const;
   float getMinValue() const;
   float getMaxValue() const;
+  float getCurrentValue() const;
+  float getDefaultValue(int) const;
   AttributeModifier getModifier(mce::UUID const &) const;
   std::vector<AttributeModifier> getModifiers(int) const;
   std::vector<AttributeModifier> getModifiers(std::vector<std::string> const &) const;

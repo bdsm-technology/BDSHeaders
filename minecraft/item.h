@@ -499,3 +499,25 @@ struct ItemInstance {
 
   ~ItemInstance();
 };
+
+struct ItemGroup {
+  ItemInstance item; // 0
+  int count;         // 28
+
+  ItemGroup();
+  ItemGroup(ItemInstance const &);
+  ItemGroup(ItemInstance const &, int);
+  ItemGroup(ItemGroup const &);
+  ItemGroup(ItemGroup &&);
+
+  ItemGroup &operator=(ItemGroup const &);
+  ItemGroup &operator=(ItemGroup &&);
+
+  void setCount(int);
+  int getCount() const;
+  bool isEmpty() const;
+  ItemInstance getItemType() const;
+  ItemInstance getItemStack() const;
+
+  ~ItemGroup();
+};

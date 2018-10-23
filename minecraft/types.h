@@ -231,7 +231,7 @@ struct FloatRange {
 };
 
 enum struct Difficulty { Peaceful, Easy, Normal, Hard };
-enum struct GameType { Survival, Creative };
+enum struct GameType { Survival, Creative, Viewer = 4, Adventure = 5 };
 enum struct GeneratorType { Old, Normal, Flat };
 enum struct StorageVersion {};
 
@@ -735,3 +735,4 @@ enum struct PaletteColor : char {
 };
 enum struct EquipmentSlot {};
 enum struct MobSpawnMethod {};
+enum struct BuildPlatform {};

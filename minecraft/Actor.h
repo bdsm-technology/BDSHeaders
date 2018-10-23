@@ -1,10 +1,12 @@
 #pragma once
 
+#include "Abilities.h"
 #include "ActorDefinition.h"
 #include "Attribute.h"
 #include "Components.h"
 #include "Container.h"
 #include "DataItem.h"
+#include "NetworkIdentifier.h"
 #include "types.h"
 #include <nonstd/optional.hpp>
 
@@ -871,7 +873,7 @@ struct alignas(8) Actor {
   virtual bool isTargetable() const;                                                             // 736
   virtual bool canAttack(Actor *, bool) const;                                                   // 744
   virtual void setTarget(Actor *);                                                               // 752
-  virtual bool findAttackTarget(void);                                                           // 760
+  virtual bool findAttackTarget();                                                               // 760
   virtual bool isValidTarget(Actor *) const;                                                     // 768
   virtual bool attack(Actor &);                                                                  // 776
   virtual void adjustDamageAmount(int &) const;                                                  // 784
@@ -904,7 +906,7 @@ struct alignas(8) Actor {
   virtual void spawnAtLocation(Block const &, int);                                              // 1000
   virtual void spawnAtLocation(Block const &, int, float);                                       // 1008
   virtual void spawnAtLocation(ItemInstance const &, float);                                     // 1016
-  virtual void despawn(void);                                                                    // 1024
+  virtual void despawn();                                                                        // 1024
   virtual void killed(Actor &);                                                                  // 1032
   virtual void awardKillScore(Actor &, int);                                                     // 1040
   virtual void setArmor(ArmorSlot, ItemInstance const &);                                        // 1048
@@ -914,13 +916,13 @@ struct alignas(8) Actor {
   virtual ItemInstance const &getCarriedItem() const;                                            // 1080
   virtual void setCarriedItem(ItemInstance const &);                                             // 1088
   virtual void setOffhandSlot(ItemInstance const &);                                             // 1096
-  virtual ItemInstance const &getEquippedTotem(void) const;                                      // 1104
-  virtual bool consumeTotem(void);                                                               // 1112
+  virtual ItemInstance const &getEquippedTotem() const;                                          // 1104
+  virtual bool consumeTotem();                                                                   // 1112
   virtual bool save(CompoundTag &);                                                              // 1120
   virtual bool saveWithoutId(CompoundTag &);                                                     // 1128
   virtual bool load(CompoundTag const &);                                                        // 1136
   virtual bool loadLinks(CompoundTag const &, std::vector<ActorLink> &);                         // 1144
-  virtual ActorType getEntityTypeId(void) = 0;                                                   // 1152
+  virtual ActorType getEntityTypeId() const = 0;                                                 // 1152
   virtual bool acceptClientsideEntityData(Player &, SetActorDataPacket const &);                 // 1160
   virtual void *queryEntityRenderer();                                                           // 1168
   virtual ActorUniqueID getSourceUniqueID() const;                                               // 1176
@@ -1197,6 +1199,9 @@ struct Mob : Actor {
   static int SLOW_FALL_GRAVITY;
   static int DEFAULT_GRAVITY;
 
+  Mob(ActorDefinitionGroup *, ActorDefinitionIdentifier const &);
+  Mob(Level &);
+
   void calcMoveRelativeSpeed(TravelType);
   void calculateAmbientSoundTime(int);
   bool canPickUpLoot(ItemInstance const &) const;
@@ -1365,9 +1370,9 @@ struct Mob : Actor {
   virtual float getMaxHeadXRot();                                                                         // 2248
   virtual Mob *getLastHurtByMob();                                                                        // 2256
   virtual void setLastHurtByMob(Mob *);                                                                   // 2264
-  virtual Player *getLastHurtByPlayer(void);                                                              // 2272
+  virtual Player *getLastHurtByPlayer();                                                                  // 2272
   virtual void setLastHurtByPlayer(Player *);                                                             // 2280
-  virtual Actor *getLastHurtMob(void);                                                                    // 2288
+  virtual Actor *getLastHurtMob();                                                                        // 2288
   virtual void setLastHurtMob(Actor *);                                                                   // 2296
   virtual bool isAlliedTo(Mob *);                                                                         // 2304
   virtual bool doHurtTarget(Actor *);                                                                     // 2312
@@ -1426,3 +1431,499 @@ static_assert(4900 == offsetof(Mob, b4900));
 static_assert(5000 == offsetof(Mob, village));
 static_assert(5100 == offsetof(Mob, unk5100));
 static_assert(5156 == offsetof(Mob, b5156));
+
+struct Certificate;
+struct PlayerChunkSource;
+struct IContainerManager;
+struct PlayerInventoryProxy;
+struct SkinInfoData;
+struct PacketSender;
+struct HudContainerManagerModel;
+struct EnderChestContainer;
+struct FillingContainer;
+struct InventoryTransaction;
+struct InventoryAction;
+struct GameMode;
+struct PlayerListener;
+struct NetworkIdentifier;
+struct ChunkSource;
+struct StructureFeature;
+struct ChalkboardBlockActor;
+struct MinecraftEventing;
+struct EventPacket;
+struct ComplexInventoryTransaction;
+struct Packet;
+struct ServerPlayerEventCoordinator;
+
+struct InventoryTransactionManager {
+  Player &player;
+  std::unique_ptr<InventoryTransaction> transaction;
+  std::vector<InventoryAction> expected_actions;
+
+  InventoryTransactionManager(Player &);
+  void addAction(InventoryAction const &);
+  void addExpectedAction(InventoryAction const &);
+  void checkExpectedAction(InventoryAction const &);
+  void forceBalanceTransaction();
+  std::unique_ptr<InventoryTransaction> const &getCurrentTransaction() const;
+  int getSourceCount() const;
+  void reset();
+  void resetExpectedActions();
+  ~InventoryTransactionManager();
+};
+
+struct SkinAdjustments {
+  int adjustment;
+  SkinAdjustments();
+};
+
+namespace mce {
+struct Image;
+}
+struct Agent;
+
+struct alignas(8) Player : Mob {
+  enum struct PositionMode { Normal, Direct, Teleport, Rotate };
+  int unk5160;                                                           // 5160
+  bool b5164;                                                            // 5164
+  int unk5168;                                                           // 5168
+  std::vector<int> v5176;                                                // 5176
+  bool b5200;                                                            // 5200
+  bool b5201;                                                            // 5201
+  int unk5204;                                                           // 5204
+  bool b5208;                                                            // 5208
+  bool b5209;                                                            // 5209
+  int score;                                                             // 5212
+  int unk5216;                                                           // 5216
+  int unk5220;                                                           // 5220
+  bool unk5224;                                                          // 5224
+  std::string s5232;                                                     // 5232
+  int platform;                                                          // 5264
+  Abilities abilities;                                                   // 5272
+  NetworkIdentifier netId;                                               // 5416
+  std::string s5568;                                                     // 5568
+  std::string s5600;                                                     // 5600
+  std::string s5632;                                                     // 5632
+  std::string s5664;                                                     // 5664
+  void *unk5696;                                                         // 5696
+  void *unk5704;                                                         // 5704
+  void *unk5712;                                                         // 5712
+  std::unique_ptr<Certificate> cert;                                     // 5720
+  std::string s5728;                                                     // 5728
+  int unk5760;                                                           // 5760
+  ActorUniqueID auid5768;                                                // 5768
+  ActorUniqueID auid5776;                                                // 5776
+  Vec3 v5784;                                                            // 5784
+  bool b5796;                                                            // 5796
+  std::unique_ptr<PlayerChunkSource> chunk_source1;                      // 5800
+  std::unique_ptr<PlayerChunkSource> chunk_source2;                      // 5808
+  std::unique_ptr<BlockSource> block_sorce;                              // 5816
+  BlockPos sleep_block_pos;                                              // 5824
+  Vec3 bed_offset;                                                       // 5836
+  Vec3 v5848;                                                            // 5848
+  bool b5860;                                                            // 5860
+  Vec3 v5864;                                                            // 5864
+  Vec3 v5876;                                                            // 5876
+  Vec3 v5888;                                                            // 5888
+  Vec3 v5900;                                                            // 5900
+  int unk5912;                                                           // 5912
+  int unk5916;                                                           // 5916
+  std::shared_ptr<IContainerManager> container_mgr;                      // 5920
+  std::unique_ptr<PlayerInventoryProxy> inv_proxy;                       // 5936
+  std::unique_ptr<SkinInfoData> skin_info;                               // 5944
+  std::vector<ItemInstance> items;                                       // 5952
+  std::array<std::vector<ItemGroup>, 4ul> filtered_creative_item_groups; // 5976
+  char client_sub_id;                                                    // 6072
+  std::string platform_online_id;                                        // 6080
+  bool respawn_ready;                                                    // 6112
+  bool b6113;                                                            // 6113
+  bool b6114;                                                            // 6114
+  DimensionId dim_id;                                                    // 6116
+  bool b6120;                                                            // 6120
+  bool spawned;                                                          // 6121
+  ItemInstance item_in_use;                                              // 6128
+  int item_use_count_down;                                               // 6240
+  short sleep_timer;                                                     // 6244
+  short prev_sleep_timer;                                                // 6246
+  bool b6248;                                                            // 6248
+  ActorUniqueID auid6256;                                                // 6256
+  int unk6264;                                                           // 6264
+  PacketSender *sender;                                                  // 6272
+  BlockPos bpos6280;                                                     // 6280
+  long long unk6296;                                                     // 6296
+  long long unk6304;                                                     // 6304
+  std::shared_ptr<HudContainerManagerModel> hud_container;               // 6312
+  std::unique_ptr<EnderChestContainer> ender_chest;                      // 6328
+  std::unique_ptr<FillingContainer> filling;                             // 6336
+  std::vector<ActorUniqueID> tracked_boss;                               // 6344
+  bool update_boss_ui_binds;                                             // 6368
+  bool update_boss_ui_controls;                                          // 6369
+  bool b6370;                                                            // 6370
+  ActorType last_hurt;                                                   // 6372
+  ItemInstance cursor_selected_item;                                     // 6376
+  ItemGroup cursor_selected_item_group;                                  // 6488
+  InventoryTransactionManager inv_trans_mgr;                             // 6608
+  std::unique_ptr<GameMode> game_mode;                                   // 6648
+  std::vector<PlayerListener *> player_listener;                         // 6656
+  char filler6680[12];                                                   // 6680
+  BlockPos spawn_position;                                               // 6692
+  bool forced_respawn;                                                   // 6704
+  bool b6705;                                                            // 6705
+  bool all_player_sleeping;                                              // 6706
+  bool destroying_block;                                                 // 6707
+  Vec3 v6708;                                                            // 6708
+  GameType game_type;                                                    // 6720
+  int ehcnantment_seed;                                                  // 6724
+  int chunk_radius;                                                      // 6728
+  int map_index;                                                         // 6732
+  int unk6736;                                                           // 6736
+  int unk6740;                                                           // 6740
+  int underwater_vision_scale;                                           // 6744
+  int underwater_light_level;                                            // 6748
+  std::vector<int> v6752;                                                // 6752
+  bool used_potion;                                                      // 6776
+  SkinAdjustments skin_adj;                                              // 6780
+  int unk6784;                                                           // 6784
+  bool r5data_recovery;                                                  // 6788
+  std::string device_id;                                                 // 6792
+
+  Player(Level &, PacketSender &, GameType, NetworkIdentifier const &, unsigned char, std::unique_ptr<SkinInfoData>, mce::UUID, std::string const &, std::unique_ptr<Certificate>, std::string const &,
+         std::string const &);
+
+  void _addLevels(int);
+  void _applyExhaustion(Vec3 const &);
+  void _ensureSafeSpawnPosition(Vec3 &);
+  void _fixup4JBedSpawnPosition(Vec3 &);
+  float _getItemDestroySpeed(Block const &) const;
+  void _handleCarriedItemInteractText();
+  void _registerElytraLoopSound();
+  void _tickCooldowns();
+  void _updateInteraction();
+  void addListener(PlayerListener &);
+  void canDestroy(Block const &) const;
+  bool canBeSeenOnMap() const;
+  bool canDestroy() const;
+  bool canUseAbility(std::string const &);
+  bool canUseCommandBlocks() const;
+  void causeFoodExhaustion(float);
+  bool checkBed(bool);
+  bool checkNeedAutoJump(float, float);
+  void clearCreativeItemList();
+  void clearUntrackedInteractionUIContainer(int);
+  void crackBlock(BlockPos const &, signed char);
+  void dropCursorSelectedItem();
+  void eat(int, float);
+  void eat(ItemInstance const &);
+  void fireDimensionChangedEvent(DimensionId);
+  void fixSpawnPosition(Vec3 &, std::vector<BlockSource *, std::allocator<BlockSource *>>) const;
+  void fixStartSpawnPosition(BlockPos &, std::vector<BlockSource *, std::allocator<BlockSource *>>) const;
+  void forceAllowEating() const;
+  Agent *getAgent() const;
+  ActorUniqueID getAgentID() const;
+  SimpleContainer getArmorContainer();
+  int getAttackDamage();
+  Vec3 getCapePos(float);
+  Certificate *getCertificate() const;
+  int getChunkRadius() const;
+  PlayerChunkSource *getChunkSource() const;
+  NetworkIdentifier &getClientId() const;
+  char getClientSubId() const;
+  IContainerManager *getContainerManager();
+  std::vector<ItemInstance> const &getCreativeItemList() const;
+  ItemInstance const &getCursorSelectedItem() const;
+  ItemGroup getCursorSelectedItemGroup() const;
+  float getDestroyProgress(Block const &) const;
+  float getDestroySpeed(Block const &) const;
+  std::string getDeviceId() const;
+  int getDirection() const;
+  int getEnchantmentSeed() const;
+  EnderChestContainer *getEnderChestContainer();
+  std::array<std::vector<ItemGroup>, 4ul> const &getFilteredCreativeItemList() const;
+  GameMode &getGameMode() const;
+  SimpleContainer getHandContainer();
+  std::weak_ptr<HudContainerManagerModel> getHudContainerManagerModel();
+  std::string getInteractText() const;
+  std::string getItemInteractText(Item const &) const;
+  ItemInstance const &getItemInUse() const;
+  float getItemUseIntervalProgress();
+  ActorType getLastHurtBy() const;
+  float getLevelProgress() const;
+  float getLuck();
+  int getMapIndex();
+  int getNewEnchantmentSeed();
+  int getPlatform() const;
+  std::string const &getPlatformOnlineId() const;
+  GameType getPlayerGameType();
+  int getPlayerIndex() const;
+  int getPlayerLevel() const;
+  char getPlayerPermissionLevel() const;
+  int getPreviousTickSleepTimer() const;
+  bool getR5DataRecoverComplete() const;
+  int getScore();
+  ItemInstance const &getSelectedItem() const;
+  int getSelectedItemSlot() const;
+  SkinAdjustments const &getSkinAdjustments() const;
+  SkinInfoData const &getSkin() const;
+  float getSleepRotation() const;
+  BlockPos getSpawnPosition();
+  Vec3 getStandingPositionOnBlock(BlockPos const &);
+  PlayerInventoryProxy const &getSupplies() const;
+  int getTicksUsingItem();
+  std::vector<ActorUniqueID> const &getTrackedBosses();
+  InventoryTransactionManager &getTransactionManager();
+  int getUnderwaterLightLevel() const;
+  int getUnderwaterVisionScale() const;
+  GameType getUnmappedPlayerGameType();
+  bool getUsedPotion();
+  int getXpNeededForLevelRange(int, int) const;
+  int getXpNeededForNextLevel() const;
+  void handleJumpEffects();
+  void handleMovePlayerPacket(Player::PositionMode, Vec3 const &, Vec2 const &, float, int, int);
+  bool hasOpenContainer() const;
+  bool hasRespawnPosition() const;
+  bool interact(Actor &, Vec3 const &);
+  bool isBouncing() const;
+  bool isChatAllowed();
+  bool isDestroyingBlock();
+  bool isForcedRespawn() const;
+  bool isHiddenFrom(Mob &) const;
+  bool isHungry() const;
+  bool isHurt();
+  bool isInCreativeMode();
+  bool isRespawnReady();
+  bool isSleepingLongEnough() const;
+  bool isSpawned() const;
+  bool isSurvival() const;
+  bool isUsingItem() const;
+  bool isViewer() const;
+  void moveCape();
+  void onMobStatusChanged(ActorUniqueID);
+  void onResetBAI(int);
+  void recheckSpawnPosition();
+  void registerAttributes();
+  void releaseUsingItem();
+  void removeListener(PlayerListener &);
+  void resetPlayerLevel();
+  void resetToDefaultGameMode();
+  void sendEventPacket(EventPacket &) const;
+  void sendNetworkPacket(Packet &) const;
+  void setAgent(Agent *);
+  void setAllPlayersSleeping();
+  void setBedOffset(int);
+  void setBedRespawnPosition(BlockPos const &);
+  void setChunkRadius(unsigned int);
+  void setContainerManager(std::shared_ptr<IContainerManager>);
+  void setCursorSelectedItemGroup(ItemGroup const &);
+  void setCursorSelectedItem(ItemInstance const &);
+  void setDefaultHeadHeight();
+  void setEnchantmentSeed(int);
+  void setLastHurtBy(ActorType);
+  void setMapIndex(int);
+  void setPlatform(BuildPlatform);
+  void setPlatformOnlineId(std::string const &);
+  void setPlayerIndex(int);
+  void setR5DataRecoverComplete(bool);
+  void setRespawnDimension(DimensionId);
+  void setRespawnDimensionId(DimensionId);
+  void setRespawnPosition(BlockPos const &, bool);
+  void setSelectedItem(ItemInstance const &);
+  void setSkin(std::string const &, mce::Image const *, mce::Image const *, std::string const &, std::string const &, bool);
+  void setTeleportDestination(Vec3 const &);
+  void setUnderwaterLightLevel(float);
+  void setUnderwaterVisionScale(float);
+  void setUntrackedInteractionUIItem(int, ItemInstance const &);
+  void setUsedPotion(bool);
+  bool shouldUpdateBosGUIControls();
+  void shouldUpdateBossGUIBinds();
+  void spawnExperienceOrb(Vec3 const &, int);
+  void startGliding();
+  void startUsingItem(ItemInstance const &, int);
+  void stopGliding();
+  void stopUsingItem();
+  void take(Actor &, int, int);
+  void tickArmor();
+  void updateCreativeItemList(std::vector<ItemInstance, std::allocator<ItemInstance>> const &);
+  void updateInventoryTransactions();
+  void updateTeleportDestPos();
+  void updateTrackedBosses();
+
+  virtual void reloadHardcoded(Actor::InitializationMethod, VariantParameterList const &) override;         // 8
+  virtual void initializeComponents(Actor::InitializationMethod, VariantParameterList const &) override;    // 16
+  virtual ~Player() override;                                                                               // 56,64
+  virtual void remove() override;                                                                           // 88
+  virtual Vec3 getAttachPos(ActorLocation, float) const override;                                           // 128
+  virtual void move(Vec3 const &) override;                                                                 // 152
+  virtual void teleportTo(Vec3 const &, bool, int, int) override;                                           // 208
+  virtual std::unique_ptr<AddActorPacket> getAddPacket() override;                                          // 240
+  virtual void normalTick() override;                                                                       // 248
+  virtual void rideTick() override;                                                                         // 264
+  virtual float getRidingHeight() override;                                                                 // 280
+  virtual std::string getFormattedNameTag() const override;                                                 // 392
+  virtual bool getAlwaysShowNameTag() const override;                                                       // 416
+  virtual float getCameraOffset() const override;                                                           // 504
+  virtual bool isImmobile() const override;                                                                 // 632
+  virtual bool isPushable() const override;                                                                 // 664
+  virtual bool isPushableByPiston() const override;                                                         // 672
+  virtual bool isShootable() override;                                                                      // 680
+  virtual bool isCreativeModeAllowed() override;                                                            // 720
+  virtual bool attack(Actor &) override;                                                                    // 776
+  virtual void adjustDamageAmount(int &) const override;                                                    // 784
+  virtual bool isInvulnerableTo(ActorDamageSource const &) const override;                                  // 920
+  virtual void onBounceStarted(BlockPos const &, Block const &) override;                                   // 952
+  virtual void feed(int) override;                                                                          // 960
+  virtual void handleEntityEvent(ActorEvent, int) override;                                                 // 968
+  virtual void awardKillScore(Actor &, int) override;                                                       // 1040
+  virtual void setArmor(ArmorSlot, ItemInstance const &) override;                                          // 1048
+  virtual ItemInstance const &getCarriedItem() const override;                                              // 1080
+  virtual void setCarriedItem(ItemInstance const &) override;                                               // 1088
+  virtual void setOffhandSlot(ItemInstance const &) override;                                               // 1096
+  virtual ItemInstance const &getEquippedTotem() const override;                                            // 1104
+  virtual bool consumeTotem() override;                                                                     // 1112
+  virtual ActorType getEntityTypeId() const override;                                                       // 1152
+  virtual int getPortalCooldown() const override;                                                           // 1208
+  virtual int getPortalWaitTime() const override;                                                           // 1216
+  virtual void onSynchedDataUpdate(int) override;                                                           // 1304
+  virtual bool canAddRider(Actor &) const override;                                                         // 1312
+  virtual bool canBePulledIntoVehicle() const override;                                                     // 1320
+  virtual void sendMotionPacketIfNeeded() override;                                                         // 1352
+  virtual void startSwimming() override;                                                                    // 1376
+  virtual void stopSwimming() override;                                                                     // 1384
+  virtual int getCommandPermissionLevel() const override;                                                   // 1400
+  virtual void useItem(ItemInstance &) override;                                                            // 1512
+  virtual Vec2 getMapDecorationRotation() override;                                                         // 1560
+  virtual bool isWorldBuilder() override;                                                                   // 1584
+  virtual bool isCreative() const override;                                                                 // 1592
+  virtual bool isAdventure() const override;                                                                // 1600
+  virtual void add(ItemInstance &) override;                                                                // 1608
+  virtual void drop(ItemInstance const &, bool) override;                                                   // 1616
+  virtual void startSpinAttack() override;                                                                  // 1688
+  virtual void stopSpinAttack() override;                                                                   // 1696
+  virtual void die(ActorDamageSource const &) override;                                                     // 1736
+  virtual bool _hurt(ActorDamageSource const &, int, bool, bool) override;                                  // 1784
+  virtual void lavaHurt() override;                                                                         // 1800
+  virtual void readAdditionalSaveData(CompoundTag const &) override;                                        // 1808
+  virtual void addAdditionalSaveData(CompoundTag &) override;                                               // 1816
+  virtual void onSizeUpdated() override;                                                                    // 1920
+  virtual bool isSleeping() const override;                                                                 // 1960
+  virtual float getSpeed() const override;                                                                  // 2036
+  virtual void setSpeed(float) override;                                                                    // 2040
+  virtual bool isJumping() const override;                                                                  // 2056
+  virtual void actuallyHurt(int, ActorDamageSource const *, bool) override;                                 // 2096
+  virtual void travel(float, float, float) override;                                                        // 2104
+  virtual void aiStep() override;                                                                           // 3128
+  virtual int getItemUseDuration() override;                                                                // 2200
+  virtual int getItemUseStartupProgress() override;                                                         // 2208
+  virtual int getItemuseIntervalProgress() override;                                                        // 2216
+  virtual std::vector<ItemInstance const *> getAllHand() const override;                                    // 2416
+  virtual std::vector<ItemInstance const *> getAllEquipment() const override;                               // 2440
+  virtual void sendInventory(bool) override;                                                                // 2456
+  virtual bool canExistWhenDisallowMob() const override;                                                    // 2552
+  virtual void jumpFromGround() override;                                                                   // 2568
+  virtual void updateAi() override;                                                                         // 2576
+  virtual int getExperienceReward() const override;                                                         // 2616
+  virtual void dropEquipment(ActorDamageSource const &, int) override;                                      // 2624
+  virtual void dropEquipment() override;                                                                    // 2632
+  virtual bool useNewAi() const override;                                                                   // 2656
+  virtual void updateGliding() override;                                                                    // 2680
+  virtual void prepareRegion(ChunkSource &);                                                                // 2688
+  virtual void destroyRegion();                                                                             // 2696
+  virtual void suspendRegion();                                                                             // 2704
+  virtual void _fireWillChangeDimension();                                                                  // 2712
+  virtual void _fireDimensionChanged();                                                                     // 2720
+  virtual void changeDimensionWithCredits(DimensionId);                                                     // 2728
+  virtual void tickWorld(Tick const &);                                                                     // 2736
+  virtual std::vector<ChunkPos> const &getTickingOffsets() const;                                           // 2744
+  virtual void moveView();                                                                                  // 2752
+  virtual void setName(std::string const &);                                                                // 2760
+  virtual void checkMovementStats(Vec3 const &);                                                            // 2768
+  virtual StructureFeature *getCurrentStructureFeature() const;                                             // 2776
+  virtual void respawn();                                                                                   // 2784
+  virtual void resetRot();                                                                                  // 2792
+  virtual void resetPos(bool);                                                                              // 2800
+  virtual bool isInTrialMode();                                                                             // 2808
+  virtual bool hasResource(int);                                                                            // 2816
+  virtual void completeUsingItem();                                                                         // 2824
+  virtual void setPermissions(CommandPermissionLevel);                                                      // 2832
+  virtual void startCrafting(BlockPos const &, bool);                                                       // 2840
+  virtual void startDestroying();                                                                           // 2856
+  virtual void stopDestroying();                                                                            // 2864
+  virtual void openContainer(BlockPos const &);                                                             // 2872
+  virtual void openContainer(ActorUniqueID const &);                                                        // 2880
+  virtual void openFurnace(BlockPos const &);                                                               // 2888
+  virtual void openAnvil(BlockPos const &);                                                                 // 2904
+  virtual void openBrewingStand(BlockPos const &);                                                          // 2912
+  virtual void openHopper(BlockPos const &);                                                                // 2920
+  virtual void openHopper(ActorUniqueID const &);                                                           // 2928
+  virtual void openDispenser(BlockPos const &, bool);                                                       // 2936
+  virtual void openBeacon(BlockPos const &);                                                                // 2944
+  virtual void openPortfolio();                                                                             // 2952
+  virtual void openBook(int, bool);                                                                         // 2960
+  virtual void openCommandBlock(BlockPos const &);                                                          // 2968
+  virtual void openCommandBlockMinecart(ActorUniqueID const &);                                             // 2976
+  virtual void openHorseInventory(ActorUniqueID const &);                                                   // 2984
+  virtual bool canOpenContainerScreen();                                                                    // 3000
+  virtual void openStructureEditor(BlockPos const &);                                                       // 3032
+  virtual void openLabTable(BlockPos const &);                                                              // 3040
+  virtual void openElementConstructor(BlockPos const &);                                                    // 3048
+  virtual void openCompoundCreator(BlockPos const &);                                                       // 3056
+  virtual void openMaterialReducer(BlockPos const &);                                                       // 3064
+  virtual void displayChatMessage(std::string const &, std::string const &);                                // 3072
+  virtual void displayClientMessage(std::string const &);                                                   // 3080
+  virtual void displayLocalizableMessage(std::string const &, std::vector<std::string> const &, bool);      // 3088
+  virtual void displayWhisperMessage(std::string const &, std::string const &);                             // 3096
+  virtual void startSleepInBed(BlockPos const &);                                                           // 3104
+  virtual void stopSleepInBed(bool, bool);                                                                  // 3112
+  virtual bool canStartSleepInBed();                                                                        // 3120
+  virtual short getSleepTimer() const;                                                                      // 3128
+  virtual short getPreviousTickSleepTimer();                                                                // 3136
+  virtual bool isLocalPlayer() const;                                                                       // 3152
+  virtual bool isHostingPlayer() const;                                                                     // 3160
+  virtual bool isLoading() const;                                                                           // 3168
+  virtual bool isPlayerInitialized() const;                                                                 // 3176
+  virtual void stopLoading();                                                                               // 3184
+  virtual void registerTrackedBoss(ActorUniqueID);                                                          // 3192
+  virtual void unRegisterTrackedBoss(ActorUniqueID);                                                        // 3200
+  virtual void setPlayerGameType(GameType);                                                                 // 3208
+  virtual void _crit(Actor &);                                                                              // 3216
+  virtual MinecraftEventing *getEventing() const;                                                           // 3224
+  virtual int getUserId() const;                                                                            // 3232
+  virtual void sendEventPacket(EventPacket const &) const;                                                  // 3240
+  virtual void addExperience(int);                                                                          // 3248
+  virtual void addLevels(int);                                                                              // 3256
+  virtual void setContainerData(IContainerManager &, int, int)                                         = 0; // 3264
+  virtual void slotChanged(IContainerManager &, int, ItemInstance const &, ItemInstance const &, bool) = 0; // 3272
+  virtual void inventoryChanged(Container &, int, ItemInstance const &, ItemInstance const &);              // 3280
+  virtual void refreshContainer(IContainerManager &, std::vector<ItemInstance> const &) = 0;                // 3288
+  virtual void deleteContainerManager();                                                                    // 3296
+  virtual void setFieldOfViewModifier(float);                                                               // 3304
+  virtual bool isPositionRelevant(DimensionId, BlockPos const &);                                           // 3312
+  virtual bool isEntityRelevant(Actor const &);                                                             // 3320
+  virtual bool isTeacher() const = 0;                                                                       // 3328
+  virtual void onSuspension();                                                                              // 3336
+  virtual void onLinkedSlotsChanged();                                                                      // 3344
+  virtual int getItemCooldownLeft(CooldownType) const;                                                      // 3360
+  virtual bool isItemInCooldown(CooldownType) const;                                                        // 3368
+  virtual void sendInventoryTransaction(InventoryTransaction const &)                        = 0;           // 3376
+  virtual void sendComplexInventoryTransaction(std::unique_ptr<ComplexInventoryTransaction>) = 0;           // 3384
+  virtual void sendNetworkPacket(Packet &);                                                                 // 3392
+  virtual void chorusFruitTeleport();                                                                       // 3400
+  virtual float getUnderwaterVisionClarity();                                                               // 3408
+  virtual ServerPlayerEventCoordinator &getPlayerEventCoordinator() = 0;                                    // 3416
+  virtual void onMovePlayerPacketNormal(Vec3 const &, Vec2 const &, float);                                 // 3424
+};
+
+static_assert(5160 == offsetof(Player, unk5160));
+static_assert(5200 == offsetof(Player, b5200));
+static_assert(5416 == offsetof(Player, netId));
+static_assert(5600 == offsetof(Player, s5600));
+static_assert(5704 == offsetof(Player, unk5704));
+static_assert(5800 == offsetof(Player, chunk_source1));
+static_assert(6072 == offsetof(Player, client_sub_id));
+static_assert(6112 == offsetof(Player, respawn_ready));
+static_assert(6240 == offsetof(Player, item_use_count_down));
+static_assert(6304 == offsetof(Player, unk6304));
+static_assert(6488 == offsetof(Player, cursor_selected_item_group));
+static_assert(6608 == offsetof(Player, inv_trans_mgr));
+static_assert(6648 == offsetof(Player, game_mode));
+static_assert(6704 == offsetof(Player, forced_respawn));
+static_assert(6792 == offsetof(Player, device_id));
