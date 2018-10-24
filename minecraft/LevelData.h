@@ -77,7 +77,7 @@ struct LevelData {
   AdventureSettings &getAdventureSettings();
   bool getBonusChestSpawned() const;
   Tick getCurrentTikc() const;
-  Abilities &getDefaultAbilities() const;
+  Abilities const &getDefaultAbilities() const;
   Abilities &getDefaultAbilities();
   Json::Value const &getFlatWorldGeneratorOptions() const;
   bool getForceGameType() const;

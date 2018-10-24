@@ -500,7 +500,7 @@ struct ActorRuntimeID {
 };
 
 struct Random {
-  char filler[2520];
+  char filler[2516];
 };
 
 struct Amplifier {
@@ -668,6 +668,12 @@ template <> struct hash<HashType64> {
 };
 template <> struct hash<ActorUniqueID> {
   std::size_t operator()(ActorUniqueID const &v) const { return v.getHash(); }
+};
+template <> struct hash<ActorRuntimeID> {
+  std::size_t operator()(ActorRuntimeID const &v) const { return v.getHash(); }
+};
+template <typename Type, typename Store> struct hash<AutomaticID<Type, Store>> {
+std::size_t operator()(AutomaticID<Type, Store> const &v) const { return hash<Store>{}(v.v); }
 };
 } // namespace std
 
