@@ -243,26 +243,26 @@ enum struct ActorType {};
 enum struct ParticleType {};
 enum struct ContainerID : char {};
 enum struct ContainerType : char {
-  NONE                   = -9,
-  INVENTORY              = -1,
-  CONTAINER              = 0,
-  WORKBENCH              = 1,
-  FURNACE                = 2,
-  ENCHANTMENT            = 3,
-  BREWING_STAND          = 4,
-  ANVIL                  = 5,
-  DISPENSER              = 6,
-  DROPPER                = 7,
-  HOPPER                 = 8,
-  CAULDRON               = 9,
-  MINECART_CHEST         = 10,
-  MINECART_HOPPER        = 11,
-  HORSE                  = 12,
+  NONE = -9,
+  INVENTORY = -1,
+  CONTAINER = 0,
+  WORKBENCH = 1,
+  FURNACE = 2,
+  ENCHANTMENT = 3,
+  BREWING_STAND = 4,
+  ANVIL = 5,
+  DISPENSER = 6,
+  DROPPER = 7,
+  HOPPER = 8,
+  CAULDRON = 9,
+  MINECART_CHEST = 10,
+  MINECART_HOPPER = 11,
+  HORSE = 12,
   MINECART_COMMAND_BLOCK = 16,
-  JUKEBOX                = 17, // COMPOUND_CREATOR
-  ELEMENT_CONSTRUCTOR    = 21,
-  MATERIAL_REDUCER       = 22,
-  LAB_TABLE              = 23,
+  JUKEBOX = 17, // COMPOUND_CREATOR
+  ELEMENT_CONSTRUCTOR = 21,
+  MATERIAL_REDUCER = 22,
+  LAB_TABLE = 23,
 };
 
 struct ActorDefinitionIdentifier {
@@ -373,8 +373,7 @@ struct NewBlockID : NewType<unsigned short> {
 template <typename Type, typename Store> struct AutomaticID {
   Store v;
   AutomaticID();
-  AutomaticID(Store v)
-      : v(v) {}
+  AutomaticID(Store v) : v(v) {}
   Store value() const;
   bool operator!=(AutomaticID const &) const;
   bool operator==(AutomaticID const &) const;
@@ -385,7 +384,7 @@ template <typename Type, typename Store> struct AutomaticID {
 struct Dimension;
 struct Biome;
 using DimensionId = AutomaticID<Dimension, int>;
-using BiomeId     = AutomaticID<Biome, int>;
+using BiomeId = AutomaticID<Biome, int>;
 
 struct EntityId {
   unsigned id;
@@ -673,7 +672,7 @@ template <> struct hash<ActorRuntimeID> {
   std::size_t operator()(ActorRuntimeID const &v) const { return v.getHash(); }
 };
 template <typename Type, typename Store> struct hash<AutomaticID<Type, Store>> {
-std::size_t operator()(AutomaticID<Type, Store> const &v) const { return hash<Store>{}(v.v); }
+  std::size_t operator()(AutomaticID<Type, Store> const &v) const { return hash<Store>{}(v.v); }
 };
 } // namespace std
 
@@ -746,3 +745,75 @@ enum struct PaletteColor : char {
 enum struct EquipmentSlot {};
 enum struct MobSpawnMethod {};
 enum struct BuildPlatform {};
+enum struct CommandPermissionLevel : unsigned char {};
+
+template <typename T> struct typeid_t {
+  struct NewIDType {};
+  unsigned short value;
+  static unsigned short count;
+
+  typeid_t(typeid_t const &id) : value(id.value) {}
+  typeid_t(NewIDType) : value(++count) {}
+
+  typeid_t &operator=(typeid_t const &id);
+  bool operator==(typeid_t const &);
+  bool operator!=(typeid_t const &);
+  bool operator<(typeid_t const &);
+};
+
+template <typename T, typename U> typeid_t<T> type_id() {
+  static typeid_t<T> id{typeid_t<T>::NewIDType()};
+  return id;
+}
+
+enum struct CommandFlag : char {};
+enum struct CommandTypeFlag : char {};
+enum struct CommandOutputType : char {};
+enum struct MCCATEGORY : char {};
+struct MCRESULT {
+  bool success;        // 0
+  MCCATEGORY category; // 1
+  unsigned short code; // 2
+
+  static bool isSuccess(int);
+
+  MCRESULT(bool, MCCATEGORY, unsigned short);
+  MCRESULT(int);
+
+  bool operator==(MCRESULT const &) const;
+  bool operator!=(MCRESULT const &) const;
+
+  int getFullCode() const;
+  bool isSuccess() const;
+};
+
+#define DEF_RES(name) extern MCRESULT name;
+
+DEF_RES(MCRESULT_FailedToParseCommand);       // F 0 0
+DEF_RES(MCRESULT_CommandNotFound);            // F 0 0
+DEF_RES(MCRESULT_NotEnoughPermissions);       // F 0 2
+DEF_RES(MCRESULT_CommandVersionMismatch);     // F 0 3
+DEF_RES(MCRESULT_InvalidOverloadSyntax);      // F 0 4
+DEF_RES(MCRESULT_InvalidCommandContext);      // F 0 5
+DEF_RES(MCRESULT_InvalidCommandCall);         // F 0 6
+DEF_RES(MCRESULT_CommandsDisabled);           // F 0 7
+DEF_RES(MCRESULT_NoChatPermissions);          // F 0 8
+DEF_RES(MCRESULT_NoTargetsFound);             // F 0 9
+DEF_RES(MCRESULT_ChatMuted);                  // F 0 10
+DEF_RES(MCRESULT_ExpectedRequestMsg);         // F 1 0
+DEF_RES(MCRESULT_MalformedRequest);           // F 1 1
+DEF_RES(MCRESULT_VersionMismatch);            // F 1 2
+DEF_RES(MCRESULT_TooManyPendingRequests);     // F 1 3
+DEF_RES(MCRESULT_MustSpecifyVersion);         // F 1 4
+DEF_RES(MCRESULT_EncryptionRequired);         // F 1 5
+DEF_RES(MCRESULT_ExecutionFail);              // F 2 0
+DEF_RES(MCRESULT_CommandStepFail);            // F 2 1
+DEF_RES(MCRESULT_AllTargetsWillFail);         // F 2 2
+DEF_RES(MCRESULT_FailWithoutFailMsg);         // F 2 3
+DEF_RES(MCRESULT_Success);                    // T 0 0
+DEF_RES(MCRESULT_CommandStepDone);            // T 2 1
+DEF_RES(MCRESULT_CommandExecIncomplete);      // T 2 2
+DEF_RES(MCRESULT_CommandRequestInitiated);    // T 2 3
+DEF_RES(MCRESULT_NewCommandVersionAvailable); // T 2 4
+
+#undef DEF_RES

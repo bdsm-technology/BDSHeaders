@@ -4,10 +4,10 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include "types.h"
 
 struct CompoundTag;
 
-enum struct CommandPermissionLevel : unsigned char;
 enum struct PlayerPermissions : unsigned char;
 
 struct PermissionsHandler {
