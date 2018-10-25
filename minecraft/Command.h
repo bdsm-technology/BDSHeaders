@@ -193,10 +193,17 @@ struct CommandSyntaxInformation {
 };
 
 struct CommandOperator;
-
 struct AvailableCommandsPacket;
-
 struct CommandSelectorBase;
+
+template <typename T> struct InvertableFilter {
+  T value;       // 0
+  bool inverted; // sizeof(T)
+
+  InvertableFilter(InvertableFilter const &);
+  InvertableFilter(InvertableFilter &&);
+  ~InvertableFilter();
+};
 
 struct CommandRegistry {
   enum struct HardNonTerminal {};
@@ -241,6 +248,9 @@ struct CommandRegistry {
     Symbol symbol;                                    // 36
 
     ParseToken(Symbol, ParseToken *);
+
+    std::string toString() const;
+
     ~ParseToken();
   };
   struct ParseRule {
@@ -403,6 +413,8 @@ struct CommandRegistry {
   ParseToken &collapseOn(ParseToken &, Symbol, Symbol);
   std::unique_ptr<Command> createCommand(ParseToken const &, CommandOrigin const &, int, std::string &, std::vector<std::string> &) const;
   std::string describe(Signature const &, std::string const &, Overload const &, unsigned int, unsigned int *, unsigned int *) const;
+  std::string describe(Symbol);
+  std::string describe(CommandParameterData const &);
   ParseToken *expand(ParseToken &, Symbol);
   ParseToken *expandExcept(ParseToken &, Symbol, Symbol);
   ParseToken *expandOn(ParseToken &, Symbol, Symbol);
@@ -421,6 +433,8 @@ struct CommandRegistry {
   unsigned getCommandStatus(std::string const &) const;
   CommandPermissionLevel getCommandsPermissionLevel(std::string const &) const;
   Enum &getEnumData(ParseToken const &) const;
+  InvertableFilter<std::string> getInvertableFilter(ParseToken const &) const;
+  std::vector<std::string> getAlphabeticalLookup(CommandOrigin const &) const;
   void getOverloadSyntaxInformation(CommandOrigin const &, CommandSyntaxInformation &, ParseToken const *) const;
   CommandSyntaxInformation getOverloadSyntaxInformation(CommandOrigin const &, std::string const &, unsigned) const;
   Symbol getParseSymbol(CommandParameterData const &);
@@ -456,6 +470,7 @@ struct CommandRegistry {
   void setNetworkUpdateCallback(std::function<void(Packet const &)>);
   void setSoftEnumValues(std::string const &, std::vector<std::string>);
   void setupOverloadRules(Signature &, Overload &);
+  std::string symbolToString(Symbol) const;
 
   ~CommandRegistry();
 };
@@ -516,4 +531,148 @@ struct MinecraftCommands {
   void setRegistryNetworkUpdateCallback(std::function<void(Packet const &)>) const;
 
   ~MinecraftCommands();
+};
+
+struct CommandPosition {
+  Vec3 pos; // 0
+  bool reX; // 12
+  bool reY; // 13
+  bool reZ; // 14
+  bool b15; // 15
+
+  CommandPosition();
+
+  CommandPosition &operator=(CommandPosition const &);
+
+  Vec3 getPosition(CommandOrigin const &);
+  Vec3 getPosition(Vec3);
+};
+
+enum struct CommandSelectionType;
+enum struct CommandSelectionOrder;
+
+struct CommandSelectorBase {
+  int version;                                                              // 0
+  CommandSelectionType type;                                                // 4
+  CommandSelectionOrder order;                                              // 8
+  std::vector<InvertableFilter<std::string>> nameFilter;                    // 16
+  std::vector<InvertableFilter<ActorType>> typeFilter;                      // 40
+  std::vector<std::function<bool(CommandOrigin const &, Actor &)>> filters; // 64
+  BlockPos source_pos;                                                      // 104
+  float radius_min;                                                         // 116
+  float radius_max;                                                         // 120
+  std::size_t result_count;                                                 // 128
+  bool include_dead_players;                                                // 136
+  bool use_radius1;                                                         // 137
+  bool use_radius2;                                                         // 138
+  bool b139;                                                                // 139
+  bool player_only;                                                         // 140
+
+  CommandSelectorBase(bool);
+  CommandSelectionType getType() const;
+  CommandSelectionOrder getOrder() const;
+  std::string getExplicitPlayerName() const;
+  std::string getName() const;
+  void addNameFilter(InvertableFilter<std::string> const &);
+  void addTypeFilter(InvertableFilter<std::string> const &);
+  void addFilter(std::function<bool(CommandOrigin const &, Actor &)>);
+  bool compile(CommandOrigin const &, std::string &);
+  bool filter(CommandOrigin const &, Actor &, float);
+  bool hasName() const;
+  bool isExpansionAllowed(CommandOrigin const &) const;
+  bool matchName(Actor &) const;
+  bool matchType(Actor &) const;
+  std::shared_ptr<std::vector<Actor *>> newResults() const;
+  void setBox(BlockPos);
+  void setIncludeDeadPlayers(bool);
+  void setOrder(CommandSelectionOrder);
+  void setPosition(CommandPosition);
+  void setType(CommandSelectionOrder);
+  void setVersion(int);
+};
+
+template <typename T> struct SelectorIterator {
+  std::shared_ptr<std::vector<Actor *>> ref;
+  typename std::vector<Actor *>::iterator it;
+
+  SelectorIterator(std::shared_ptr<std::vector<Actor *>>, typename std::vector<Actor *>::iterator);
+  SelectorIterator(SelectorIterator const &);
+  SelectorIterator();
+
+  SelectorIterator &operator=(SelectorIterator const &);
+  bool operator==(SelectorIterator const &) const;
+  bool operator!=(SelectorIterator const &) const;
+  T &operator*();
+  SelectorIterator operator++(int);
+  SelectorIterator &operator++();
+
+  ~SelectorIterator();
+};
+
+template <typename T> struct CommandSelectorResults {
+  std::shared_ptr<std::vector<Actor *>> data;
+
+  CommandSelectorResults(CommandSelectorResults const &);
+  CommandSelectorResults(std::shared_ptr<std::vector<Actor *>>);
+
+  SelectorIterator<T> begin() const;
+  SelectorIterator<T> end() const;
+  T *get() const;
+  std::size_t size() const;
+  bool empty() const;
+
+  ~CommandSelectorResults();
+};
+
+template <typename T> struct CommandSelector : CommandSelectorBase {
+  CommandSelector();
+
+  CommandSelectorResults<T> results() const;
+
+  ~CommandSelector();
+};
+
+struct CommandMessage {
+  struct MessageComponent {
+    std::string text;                                 // 0
+    std::unique_ptr<CommandSelector<Actor>> selector; // 32
+
+    MessageComponent(MessageComponent &&);
+    MessageComponent(std::string const &);
+    MessageComponent(std::unique_ptr<CommandSelector<Actor>> &&);
+
+    MessageComponent &operator=(MessageComponent &&);
+
+    ~MessageComponent();
+  };
+
+  std::vector<MessageComponent> components;
+
+  CommandMessage();
+
+  std::string getMessage(CommandOrigin const &) const;
+
+  ~CommandMessage();
+};
+
+struct Item;
+struct BlockSource;
+struct Player;
+
+namespace CommandUtils {
+bool addItemInstanceComponents(ItemInstance &, Json::Value const &, std::string &);
+void addToCSVList(std::string &, std::string const &);
+void clearBlockEntityContents(BlockSource &, BlockPos const &);
+ItemInstance createItemInstance(Item const *, int, int);
+ItemInstance createItemInstance(std::string const &, int, int);
+std::vector<ItemInstance> createItemStacks(ItemInstance const &, int, int &);
+void createMapData(Actor &, ItemInstance &, CommandOutput &);
+void displayLocalizableMessage(bool, Player &, std::string const &, std::vector<std::string> const &, bool);
+BlockPos getFeetBlockPos(Actor *);
+Vec3 getFeetPos(Actor *);
+std::vector<ActorType> getInvalidCommandEntities();
+bool isPlayerSpawnedMob(Actor *, Actor *);
+bool isValidCommandEntity(std::vector<ActorType> const &, ActorType);
+void spawnEntityAt(BlockSource &, Vec3 const &, ActorType, ActorUniqueID &, Actor *);
+std::string toJsonResult(std::string const &, Json::Value const &);
 };
